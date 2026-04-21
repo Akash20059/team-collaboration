@@ -1,0 +1,31 @@
+{
+  "name": "gmx-price-mcp",
+  "description": "An MCP tool that fetches real-time GMX token prices using the CoinGecko API.",
+  "version": "1.0.0",
+  "tools": {
+    "get_token_price": {
+      "description": "Fetch current USD price of GMX token.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "The token symbol to fetch price for (e.g. GMX)."
+          }
+        },
+        "required": ["token"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string" },
+          "price_usd": { "type": "number" }
+        }
+      }
+    }
+  },
+  "server": {
+    "type": "python",
+    "entrypoint": "gmx_mcp_server.py"
+  }
+}

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GMX Chatbot</title>
+    <style>
+      body {font-family: Arial, sans-serif; margin: 40px;}
+      #chatbox {width: 100%; height: 300px; border: 1px solid #ccc; padding: 10px; overflow-y: scroll;}
+      #userInput {width: 80%; padding: 10px;}
+      #sendBtn {padding: 10px 20px;}
+      .user {color: blue; font-weight: bold;}
+      .bot {color: green; margin-top: 10px;}
+    </style>
+</head>
+<body>
+    <h1>GMX Chatbot Interface</h1>
+    <div id="chatbox"></div>
+    <input type="text" id="userInput" placeholder="Type your question here..." autofocus />
+    <button id="sendBtn">Send</button>
+
+    <script>
+    const chatbox = document.getElementById("chatbox");
+    const userInput = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
+
+    function appendMessage(sender, message) {
+        const el = document.createElement("div");
+        el.className = sender;
+        el.textContent = (sender === "user" ? "You: " : "Bot: ") + message;
+        chatbox.appendChild(el);
+        chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    async function sendPrompt() {
+        const prompt = userInput.value.trim();
+        if (!prompt) return;
+
+        appendMessage("user", prompt);
+        userInput.value = "";
+        sendBtn.disabled = true;
+
+        const typingEl = document.createElement("div");
+        typingEl.className = "bot";
+        typingEl.textContent = "Bot is typing...";
+        chatbox.appendChild(typingEl);
+        chatbox.scrollTop = chatbox.scrollHeight;
+
+        try {
+            const resp = await fetch("/chat", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: new URLSearchParams({ user_input: prompt })
+            });
+            const data = await resp.json();
+
+            chatbox.removeChild(typingEl);
+            appendMessage("bot", data.reply);
+        } catch (e) {
+            chatbox.removeChild(typingEl);
+            appendMessage("bot", "Error: " + e.message);
+        } finally {
+            sendBtn.disabled = false;
+        }
+    }
+
+    sendBtn.addEventListener("click", sendPrompt);
+    userInput.addEventListener("keydown", e => {
+        if (e.key === "Enter") sendPrompt();
+    });
+    </script>
+</body>
+</html>

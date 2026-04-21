@@ -1,2 +1,3 @@
-# team-collaboration
-e-commerce website for Goshala
+# Welcome to your Lovable project
+
+TODO: Document your project here

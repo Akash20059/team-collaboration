@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { CartProvider } from "@/hooks/useCart";
 import { AdminRoute } from "@/components/AdminRoute";
 import { CartDrawer } from "@/components/site/CartDrawer";
+import { seedIfEmpty } from "@/lib/adminStore";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Auth from "./pages/Auth.tsx";
@@ -15,11 +16,14 @@ import CheckoutAddress from "./pages/CheckoutAddress.tsx";
 import CheckoutPayment from "./pages/CheckoutPayment.tsx";
 import OrderConfirmed from "./pages/OrderConfirmed.tsx";
 import TrackOrder from "./pages/TrackOrder.tsx";
+import AdminLogin from "./pages/admin/AdminLogin.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import AdminProducts from "./pages/admin/AdminProducts.tsx";
 import AdminCows from "./pages/admin/AdminCows.tsx";
 import AdminBlog from "./pages/admin/AdminBlog.tsx";
-import AdminOrders from "./pages/admin/AdminOrders.tsx";
+
+// Seed default data on first visit
+seedIfEmpty();
 
 const queryClient = new QueryClient();
 
@@ -40,11 +44,11 @@ const App = () => (
               <Route path="/checkout/payment" element={<CheckoutPayment />} />
               <Route path="/order-confirmed/:orderId" element={<OrderConfirmed />} />
               <Route path="/track-order" element={<TrackOrder />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
               <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
               <Route path="/admin/cows" element={<AdminRoute><AdminCows /></AdminRoute>} />
               <Route path="/admin/blog" element={<AdminRoute><AdminBlog /></AdminRoute>} />
-              <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </CartProvider>

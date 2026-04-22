@@ -1,26 +1,21 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getProducts } from "@/lib/adminStore";
 import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/config";
-import ghee from "@/assets/product-ghee.jpg";
-import dhoopa from "@/assets/product-dhoopa.jpg";
-import soap from "@/assets/product-soap.jpg";
 
 interface Product {
   id: string;
   name: string;
-  description: string | null;
+  description: string;
   price: number;
-  mrp: number | null;
+  mrp: number;
   quantity_available: number;
   stock_status: "in_stock" | "low_stock" | "out_of_stock";
   image_url: string | null;
 }
-
-const FALLBACK = [ghee, dhoopa, soap];
 
 export const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -28,15 +23,10 @@ export const Products = () => {
   const { add, setOpen } = useCart();
 
   useEffect(() => {
-    supabase
-      .from("products")
-      .select("id, name, description, price, mrp, quantity_available, stock_status, image_url")
-      .order("display_order", { ascending: true })
-      .order("created_at", { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data) setProducts(data as Product[]);
-        setLoading(false);
-      });
+    // Read from localStorage
+    const data = getProducts();
+    setProducts(data);
+    setLoading(false);
   }, []);
 
   const onAdd = (p: Product) => {
@@ -68,15 +58,22 @@ export const Products = () => {
           <div className="text-center text-muted-foreground py-12">No products yet. Check back soon 🙏</div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map((p, i) => {
+            {products.map((p) => {
               const isOut = p.stock_status === "out_of_stock" || p.quantity_available <= 0;
               const isLow = p.stock_status === "low_stock" && p.quantity_available > 0;
-              const img = p.image_url || FALLBACK[i % FALLBACK.length];
               return (
                 <div key={p.id} className="group bg-card rounded-2xl overflow-hidden border border-border/60 shadow-soft hover:shadow-warm transition-smooth">
                   <div className="relative aspect-[4/3] overflow-hidden">
-                    <img src={img} alt={p.name} loading="lazy" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    {isOut && <span className="absolute top-3 right-3 bg-destructive text-destructive-foreground text-xs px-2 py-1 rounded-full">Out of Stock</span>}
+                    {p.image_url ? (
+                      <img src={p.image_url} alt={p.name} loading="lazy" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    ) : (
+                      <div className="h-full w-full bg-muted flex items-center justify-center text-4xl">📦</div>
+                    )}
+                    {isOut && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <span className="bg-destructive text-destructive-foreground text-sm px-4 py-2 rounded-full font-semibold">Currently Unavailable</span>
+                      </div>
+                    )}
                     {isLow && <span className="absolute top-3 right-3 bg-accent text-accent-foreground text-xs px-2 py-1 rounded-full font-semibold">Only {p.quantity_available} left!</span>}
                   </div>
                   <div className="p-5">

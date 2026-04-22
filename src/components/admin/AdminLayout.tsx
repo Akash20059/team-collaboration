@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Cog as Cow, FileText, ShoppingBag, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, Package, Cog as Cow, FileText, LogOut, Menu } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -12,7 +12,6 @@ const navItems = [
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/cows", label: "Our Cows", icon: Cow },
   { to: "/admin/blog", label: "Updates", icon: FileText },
-  { to: "/admin/orders", label: "Orders", icon: ShoppingBag },
 ];
 
 const SidebarContent = ({ onNav }: { onNav?: () => void }) => (
@@ -47,12 +46,12 @@ const SidebarContent = ({ onNav }: { onNav?: () => void }) => (
 );
 
 export const AdminLayout = ({ children, title }: { children: ReactNode; title?: string }) => {
-  const { signOut, user } = useAuth();
+  const { logout } = useAuth();
   const nav = useNavigate();
 
-  const onLogout = async () => {
-    await signOut();
-    nav("/auth", { replace: true });
+  const onLogout = () => {
+    logout();
+    nav("/admin/login", { replace: true });
   };
 
   return (
@@ -79,7 +78,7 @@ export const AdminLayout = ({ children, title }: { children: ReactNode; title?: 
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <span className="hidden sm:block text-xs text-muted-foreground truncate max-w-[200px]">{user?.email}</span>
+            <span className="hidden sm:block text-xs text-muted-foreground">Admin</span>
             <Button variant="outline" size="sm" onClick={onLogout}>
               <LogOut className="h-3 w-3" /> Logout
             </Button>

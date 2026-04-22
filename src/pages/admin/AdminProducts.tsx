@@ -9,41 +9,21 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ImageUpload } from "@/components/admin/ImageUpload";
-import { Pencil, Trash2, Plus, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Pencil, Trash2, Plus } from "lucide-react";
+import { getProducts, saveProduct, deleteProduct, type Product } from "@/lib/adminStore";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/config";
-
-interface Product {
-  id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  mrp: number | null;
-  quantity_available: number;
-  stock_status: string;
-  image_url: string | null;
-  order_link: string | null;
-}
 
 const empty = { name: "", description: "", price: 0, mrp: 0, quantity_available: 0, image_url: null as string | null, order_link: "" };
 
 const AdminProducts = () => {
   const [items, setItems] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState(empty);
-  const [busy, setBusy] = useState(false);
   const [del, setDel] = useState<Product | null>(null);
 
-  const load = async () => {
-    setLoading(true);
-    const { data } = await supabase.from("products").select("*").order("created_at", { ascending: false });
-    setItems((data as Product[]) || []);
-    setLoading(false);
-  };
-
+  const load = () => { setItems(getProducts()); };
   useEffect(() => { load(); }, []);
 
   const openAdd = () => { setEditing(null); setForm(empty); setOpen(true); };
@@ -57,36 +37,31 @@ const AdminProducts = () => {
     setOpen(true);
   };
 
-  const onSave = async (e: React.FormEvent) => {
+  const onSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || form.price <= 0) {
       toast.error("Name and valid price required");
       return;
     }
-    setBusy(true);
-    const payload = {
+    saveProduct({
+      ...(editing ? { id: editing.id } : {}),
       name: form.name.trim(),
-      description: form.description.trim() || null,
+      description: form.description.trim(),
       price: form.price,
-      mrp: form.mrp > 0 ? form.mrp : null,
+      mrp: form.mrp > 0 ? form.mrp : 0,
       quantity_available: form.quantity_available,
+      stock_status: "in_stock", // will be auto-calculated
       image_url: form.image_url,
-      order_link: form.order_link.trim() || null,
-    };
-    const res = editing
-      ? await supabase.from("products").update(payload).eq("id", editing.id)
-      : await supabase.from("products").insert(payload);
-    setBusy(false);
-    if (res.error) { toast.error(res.error.message); return; }
-    toast.success(editing ? "✅ Product updated" : "✅ Product added");
+      order_link: form.order_link.trim(),
+    });
+    toast.success(editing ? "✅ Product updated successfully!" : "✅ Product added successfully!");
     setOpen(false);
     load();
   };
 
-  const onDelete = async () => {
+  const onDelete = () => {
     if (!del) return;
-    const { error } = await supabase.from("products").delete().eq("id", del.id);
-    if (error) { toast.error(error.message); return; }
+    deleteProduct(del.id);
     toast.success("Product deleted");
     setDel(null);
     load();
@@ -105,38 +80,36 @@ const AdminProducts = () => {
         <Button variant="hero" onClick={openAdd}><Plus className="h-4 w-4" /> Add Product</Button>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" /></div>
-      ) : (
-        <Card className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left">
-              <tr>
-                <th className="p-3">Photo</th>
-                <th className="p-3">Name</th>
-                <th className="p-3">Price</th>
-                <th className="p-3">Stock</th>
-                <th className="p-3 text-right">Actions</th>
+      <Card className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-left">
+            <tr>
+              <th className="p-3">Photo</th>
+              <th className="p-3">Name</th>
+              <th className="p-3">Description</th>
+              <th className="p-3">Price</th>
+              <th className="p-3">Stock</th>
+              <th className="p-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((p) => (
+              <tr key={p.id} className="border-t border-border">
+                <td className="p-3">{p.image_url ? <img src={p.image_url} alt="" className="h-12 w-12 object-cover rounded" /> : <div className="h-12 w-12 bg-muted rounded" />}</td>
+                <td className="p-3 font-medium">{p.name}</td>
+                <td className="p-3"><div className="text-xs text-muted-foreground line-clamp-2 max-w-xs">{p.description}</div></td>
+                <td className="p-3 font-bold text-primary">{formatINR(Number(p.price))}{p.mrp && Number(p.mrp) > Number(p.price) && <div className="text-xs text-muted-foreground line-through">{formatINR(Number(p.mrp))}</div>}</td>
+                <td className="p-3">{statusBadge(p.stock_status, p.quantity_available)}</td>
+                <td className="p-3 text-right">
+                  <Button size="sm" variant="ghost" onClick={() => openEdit(p)}><Pencil className="h-3 w-3" /></Button>
+                  <Button size="sm" variant="ghost" onClick={() => setDel(p)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {items.map((p) => (
-                <tr key={p.id} className="border-t border-border">
-                  <td className="p-3">{p.image_url ? <img src={p.image_url} alt="" className="h-12 w-12 object-cover rounded" /> : <div className="h-12 w-12 bg-muted rounded" />}</td>
-                  <td className="p-3 font-medium">{p.name}<div className="text-xs text-muted-foreground line-clamp-1 max-w-xs">{p.description}</div></td>
-                  <td className="p-3 font-bold text-primary">{formatINR(Number(p.price))}{p.mrp && Number(p.mrp) > Number(p.price) && <div className="text-xs text-muted-foreground line-through">{formatINR(Number(p.mrp))}</div>}</td>
-                  <td className="p-3">{statusBadge(p.stock_status, p.quantity_available)}</td>
-                  <td className="p-3 text-right">
-                    <Button size="sm" variant="ghost" onClick={() => openEdit(p)}><Pencil className="h-3 w-3" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => setDel(p)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
-                  </td>
-                </tr>
-              ))}
-              {items.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No products yet</td></tr>}
-            </tbody>
-          </table>
-        </Card>
-      )}
+            ))}
+            {items.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No products yet</td></tr>}
+          </tbody>
+        </table>
+      </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -144,7 +117,7 @@ const AdminProducts = () => {
           <form onSubmit={onSave} className="space-y-3">
             <div>
               <Label>Photo</Label>
-              <ImageUpload bucket="product-images" value={form.image_url} onChange={(url) => setForm({ ...form, image_url: url })} />
+              <ImageUpload value={form.image_url} onChange={(url) => setForm({ ...form, image_url: url })} />
             </div>
             <div><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required maxLength={100} /></div>
             <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} maxLength={500} /></div>
@@ -156,7 +129,7 @@ const AdminProducts = () => {
             <div><Label>External Order Link (optional)</Label><Input type="url" value={form.order_link} onChange={(e) => setForm({ ...form, order_link: e.target.value })} placeholder="https://..." /></div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" variant="hero" disabled={busy}>{busy && <Loader2 className="animate-spin" />} Save</Button>
+              <Button type="submit" variant="hero">Save</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -165,7 +138,7 @@ const AdminProducts = () => {
       <AlertDialog open={!!del} onOpenChange={(o) => !o && setDel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this product?</AlertDialogTitle>
+            <AlertDialogTitle>Are you sure you want to delete this?</AlertDialogTitle>
             <AlertDialogDescription>"{del?.name}" will be permanently removed. This cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

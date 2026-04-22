@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays } from "lucide-react";
-import cow1 from "@/assets/cow-1.jpg";
-import cow2 from "@/assets/cow-2.jpg";
-import cow3 from "@/assets/cow-3.jpg";
-
-const FALLBACK = [cow1, cow2, cow3];
+import { getBlogPosts, type BlogPost } from "@/lib/adminStore";
 
 const CATEGORY_LABELS: Record<string, string> = {
   new_born_calf: "New Born Calf 🐮",
@@ -14,29 +9,14 @@ const CATEGORY_LABELS: Record<string, string> = {
   general_update: "General Update 📢",
 };
 
-interface Post {
-  id: string;
-  title: string;
-  category: keyof typeof CATEGORY_LABELS;
-  post_date: string;
-  cover_image_url: string | null;
-  content: string | null;
-}
-
 export const Blog = () => {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
-      .from("blog_posts")
-      .select("id, title, category, post_date, cover_image_url, content")
-      .order("post_date", { ascending: false })
-      .limit(6)
-      .then(({ data }) => {
-        if (data) setPosts(data as Post[]);
-        setLoading(false);
-      });
+    const data = getBlogPosts().slice(0, 6); // Show latest 6
+    setPosts(data);
+    setLoading(false);
   }, []);
 
   return (
@@ -54,14 +34,18 @@ export const Blog = () => {
           <div className="text-center text-muted-foreground">No updates yet. Check back soon 🙏</div>
         ) : (
           <div className="grid md:grid-cols-3 gap-6">
-            {posts.map((p, i) => (
+            {posts.map((p) => (
               <article key={p.id} className="bg-card rounded-2xl overflow-hidden border border-border/60 shadow-soft hover:shadow-warm transition-smooth flex flex-col">
                 <div className="aspect-[16/10] overflow-hidden">
-                  <img src={p.cover_image_url || FALLBACK[i % FALLBACK.length]} alt={p.title} loading="lazy" className="h-full w-full object-cover hover:scale-105 transition-transform duration-500" />
+                  {p.cover_image_url ? (
+                    <img src={p.cover_image_url} alt={p.title} loading="lazy" className="h-full w-full object-cover hover:scale-105 transition-transform duration-500" />
+                  ) : (
+                    <div className="h-full w-full bg-muted flex items-center justify-center text-4xl">📰</div>
+                  )}
                 </div>
                 <div className="p-5 flex flex-col flex-1">
                   <div className="flex items-center gap-3 text-xs">
-                    <span className="bg-primary/15 text-primary px-2 py-1 rounded-full font-medium">{CATEGORY_LABELS[p.category]}</span>
+                    <span className="bg-primary/15 text-primary px-2 py-1 rounded-full font-medium">{CATEGORY_LABELS[p.category] || p.category}</span>
                     <span className="flex items-center gap-1 text-muted-foreground"><CalendarDays className="h-3 w-3" />{new Date(p.post_date).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</span>
                   </div>
                   <h3 className="font-display text-xl font-bold text-secondary mt-3">{p.title}</h3>

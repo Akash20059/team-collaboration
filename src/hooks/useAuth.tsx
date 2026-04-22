@@ -1,72 +1,56 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import type { Session, User } from "@supabase/supabase-js";
+
+// ─── Hardcoded Admin Credentials ───────────────────────────────────────────
+const ADMIN_USER = "shreematagomandira@gmail.com";
+const ADMIN_PASS = "Goshala@123";
+const AUTH_KEY = "admin_auth";
 
 interface AuthCtx {
-  user: User | null;
-  session: Session | null;
-  isAdmin: boolean;
+  isAuthenticated: boolean;
   loading: boolean;
-  signOut: () => Promise<void>;
+  login: (username: string, password: string) => boolean;
+  logout: () => void;
 }
 
-const Ctx = createContext<AuthCtx>({ user: null, session: null, isAdmin: false, loading: true, signOut: async () => {} });
+const Ctx = createContext<AuthCtx>({
+  isAuthenticated: false,
+  loading: true,
+  login: () => false,
+  logout: () => {},
+});
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Listener first
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
-      setSession(sess);
-      setUser(sess?.user ?? null);
-      if (sess?.user) {
-        // Defer role fetch
-        setTimeout(async () => {
-          const { data } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", sess.user.id)
-            .eq("role", "admin")
-            .maybeSingle();
-          setIsAdmin(!!data);
-        }, 0);
-      } else {
-        setIsAdmin(false);
-      }
-    });
-
-    // 2. Then check existing session
-    supabase.auth.getSession().then(({ data: { session: sess } }) => {
-      setSession(sess);
-      setUser(sess?.user ?? null);
-      if (sess?.user) {
-        supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", sess.user.id)
-          .eq("role", "admin")
-          .maybeSingle()
-          .then(({ data }) => {
-            setIsAdmin(!!data);
-            setLoading(false);
-          });
-      } else {
-        setLoading(false);
-      }
-    });
-
-    return () => sub.subscription.unsubscribe();
+    // Check localStorage for existing session
+    const stored = localStorage.getItem(AUTH_KEY);
+    if (stored === "true") {
+      setIsAuthenticated(true);
+    }
+    setLoading(false);
   }, []);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  const login = (username: string, password: string): boolean => {
+    if (username === ADMIN_USER && password === ADMIN_PASS) {
+      localStorage.setItem(AUTH_KEY, "true");
+      setIsAuthenticated(true);
+      return true;
+    }
+    return false;
   };
 
-  return <Ctx.Provider value={{ user, session, isAdmin, loading, signOut }}>{children}</Ctx.Provider>;
+  const logout = () => {
+    localStorage.removeItem(AUTH_KEY);
+    setIsAuthenticated(false);
+  };
+
+  return (
+    <Ctx.Provider value={{ isAuthenticated, loading, login, logout }}>
+      {children}
+    </Ctx.Provider>
+  );
 };
 
 export const useAuth = () => useContext(Ctx);

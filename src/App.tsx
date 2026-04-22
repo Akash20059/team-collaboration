@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,8 +12,7 @@ import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Auth from "./pages/Auth.tsx";
 import Cart from "./pages/Cart.tsx";
-import CheckoutAddress from "./pages/CheckoutAddress.tsx";
-import CheckoutPayment from "./pages/CheckoutPayment.tsx";
+import CheckoutPay from "./pages/CheckoutPay.tsx";
 import OrderConfirmed from "./pages/OrderConfirmed.tsx";
 import TrackOrder from "./pages/TrackOrder.tsx";
 import AdminLogin from "./pages/admin/AdminLogin.tsx";
@@ -40,8 +39,9 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/cart" element={<Cart />} />
-              <Route path="/checkout/address" element={<CheckoutAddress />} />
-              <Route path="/checkout/payment" element={<CheckoutPayment />} />
+              <Route path="/checkout/address" element={<Navigate to="/cart" replace />} />
+              <Route path="/checkout/payment" element={<Navigate to="/cart" replace />} />
+              <Route path="/checkout/pay/:orderId" element={<CheckoutPay />} />
               <Route path="/order-confirmed/:orderId" element={<OrderConfirmed />} />
               <Route path="/track-order" element={<TrackOrder />} />
               <Route path="/admin/login" element={<AdminLogin />} />

@@ -12,6 +12,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { computeDelivery, formatINR } from "@/lib/config";
 import { getSavedAddress, saveAddress, SavedAddress } from "@/lib/savedAddress";
+import { addMyOrderId } from "@/lib/myOrders";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -145,6 +146,7 @@ const Cart = () => {
 
       if (error) throw error;
       saveAddress(form);
+      addMyOrderId(data.order_id);
       clear();
 
       // Go to payment page; UPI app opens there, confirmation shown after return

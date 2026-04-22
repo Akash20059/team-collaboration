@@ -15,6 +15,7 @@ import Cart from "./pages/Cart.tsx";
 import CheckoutPay from "./pages/CheckoutPay.tsx";
 import OrderConfirmed from "./pages/OrderConfirmed.tsx";
 import TrackOrder from "./pages/TrackOrder.tsx";
+import MyOrders from "./pages/MyOrders.tsx";
 import AdminLogin from "./pages/admin/AdminLogin.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import AdminProducts from "./pages/admin/AdminProducts.tsx";
@@ -44,6 +45,7 @@ const App = () => (
               <Route path="/checkout/pay/:orderId" element={<CheckoutPay />} />
               <Route path="/order-confirmed/:orderId" element={<OrderConfirmed />} />
               <Route path="/track-order" element={<TrackOrder />} />
+              <Route path="/my-orders" element={<MyOrders />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
               <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />

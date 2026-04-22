@@ -17,12 +17,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
 
-/* ─── Device detection ─── */
-const isMobileDevice = () =>
-  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent
-  );
-
 /* ─── UPI app definitions ─── */
 type UpiApp = { id: string; name: string; scheme: string; bg: string; initial: string };
 
@@ -86,7 +80,6 @@ const Cart = () => {
   const [paymentOpen,   setPaymentOpen]   = useState(false);
   const [selectedApp,   setSelectedApp]   = useState<string>("gpay");
   const [busy,          setBusy]          = useState(false);
-  const isMobile = isMobileDevice();
 
   useEffect(() => {
     const s = getSavedAddress();
@@ -120,9 +113,7 @@ const Cart = () => {
       if (!deliveryOpen) setDeliveryOpen(true);
       return;
     }
-    // On desktop we use QR code flow; on mobile we use UPI intent flow
-    const effectiveAppId = isMobile ? selectedApp : "desktop_qr";
-    const app = isMobile ? ALL_APPS.find((a) => a.id === selectedApp) : { id: "desktop_qr", name: "UPI QR Code" };
+    const app = ALL_APPS.find((a) => a.id === selectedApp);
     if (!app) { toast.error("Please choose a UPI app"); return; }
 
     setBusy(true);
@@ -148,7 +139,7 @@ const Cart = () => {
           discount:         Math.max(0, mrpTotal - subtotal),
           total_amount:     total,
           payment_method:   "upi",
-          payment_reference: isMobile ? `Opened ${app.name}` : "Desktop QR pending",
+          payment_reference:`Opened ${app.name}`,
         })
         .select("order_id")
         .single();
@@ -158,9 +149,9 @@ const Cart = () => {
       addMyOrderId(data.order_id);
       clear();
 
-      // Go to payment page; UPI intent (mobile) or QR code (desktop)
+      // Go to payment page; UPI app opens there, confirmation shown after return
       nav(`/checkout/pay/${data.order_id}`, {
-        state: { appId: effectiveAppId, appName: app.name, total },
+        state: { appId: selectedApp, appName: app.name, total },
       });
     } catch (err: any) {
       toast.error(err.message || "Could not place order");
@@ -394,28 +385,17 @@ const Cart = () => {
       {/* ── Sticky bottom bar ── */}
       <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-border shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
         <div className="container-page max-w-2xl flex items-center gap-2 py-2.5">
-          {/* Left: pay using ── mobile shows app picker, desktop shows QR label */}
-          {isMobile ? (
-            <button
-              type="button"
-              onClick={() => setPaymentOpen(true)}
-              className="flex flex-col items-start min-w-0 flex-1 px-1 py-1 rounded-lg hover:bg-muted/40 transition-colors"
-            >
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold flex items-center gap-0.5">
-                Pay using <ChevronUp className="h-3 w-3" />
-              </span>
-              <span className="text-[13px] font-semibold text-secondary truncate leading-tight">{activeApp.name}</span>
-            </button>
-          ) : (
-            <div className="flex flex-col items-start min-w-0 flex-1 px-1 py-1">
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-                Pay via
-              </span>
-              <span className="text-[13px] font-semibold text-secondary truncate leading-tight flex items-center gap-1">
-                📱 UPI QR Code
-              </span>
-            </div>
-          )}
+          {/* Left: pay using (opens sheet) */}
+          <button
+            type="button"
+            onClick={() => setPaymentOpen(true)}
+            className="flex flex-col items-start min-w-0 flex-1 px-1 py-1 rounded-lg hover:bg-muted/40 transition-colors"
+          >
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold flex items-center gap-0.5">
+              Pay using <ChevronUp className="h-3 w-3" />
+            </span>
+            <span className="text-[13px] font-semibold text-secondary truncate leading-tight">{activeApp.name}</span>
+          </button>
 
           {/* Divider */}
           <div className="w-px h-9 bg-border/70 shrink-0" />

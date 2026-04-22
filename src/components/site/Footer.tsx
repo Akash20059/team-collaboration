@@ -68,7 +68,7 @@ export const Footer = () => {
       <div className="mt-12 pt-6 border-t border-secondary-foreground/15 text-center text-xs text-secondary-foreground/70 flex flex-col sm:flex-row items-center justify-center gap-2">
         <span>© 2026 Shreemata Goumandira · Made with 🙏 for Gau Mata</span>
         <span className="opacity-50">·</span>
-        <Link to="/auth" className="text-secondary-foreground/50 hover:text-accent transition-smooth">Admin</Link>
+        <Link to="/admin/login" className="text-secondary-foreground/50 hover:text-accent transition-smooth">Admin</Link>
       </div>
     </footer>
   );

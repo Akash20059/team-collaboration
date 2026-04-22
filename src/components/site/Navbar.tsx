@@ -10,7 +10,7 @@ const links = [
   { id: "cows", label: "Our Cows" },
   { id: "donate", label: "Donate" },
   { id: "products", label: "Products" },
-  { id: "blog", label: "Updates" },
+  { id: "admin", label: "Admin" },
   { id: "connect", label: "Connect" },
 ];
 
@@ -28,6 +28,10 @@ export const Navbar = () => {
 
   const go = (id: string) => {
     setOpen(false);
+    if (id === "admin") {
+      window.location.href = "/admin/login";
+      return;
+    }
     if (window.location.pathname !== "/") {
       window.location.href = `/#${id}`;
       return;

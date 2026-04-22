@@ -98,53 +98,50 @@ const Cart = () => {
               )}
 
               {/* Price breakdown */}
-              <Card className="p-5 shadow-soft">
-                <h2 className="font-display font-bold text-secondary mb-4">Price Details</h2>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">MRP Total</span>
-                    <span className={savings > 0 ? "line-through text-muted-foreground" : ""}>{formatINR(mrpTotal)}</span>
+              <Card className="p-4 shadow-sm border-border/60 text-[15px]">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>MRP</span>
+                    <span className="text-secondary">{formatINR(mrpTotal)}</span>
                   </div>
+                  <div className="border-b border-border/50 border-dashed" />
+                  
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span className="flex items-center gap-1">Fees <span className="text-[10px]">v</span></span>
+                    <span className="text-secondary">{delivery === 0 ? "₹0" : formatINR(delivery)}</span>
+                  </div>
+                  <div className="border-b border-border/50 border-dashed" />
+                  
                   {savings > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Discount</span>
-                      <span className="text-green-700">- {formatINR(savings)}</span>
-                    </div>
+                    <>
+                      <div className="flex justify-between items-center text-muted-foreground">
+                        <span className="flex items-center gap-1">Discounts <span className="text-[10px]">v</span></span>
+                        <span className="text-green-700">- {formatINR(savings)}</span>
+                      </div>
+                      <div className="border-b border-border/50 border-dashed" />
+                    </>
                   )}
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Platform/Handling Fee</span>
-                    <span className="text-green-700 font-medium">FREE</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Courier Delivery</span>
-                    {delivery === 0 ? (
-                      <span className="text-green-700 font-medium">FREE</span>
-                    ) : (
-                      <span>{formatINR(delivery)}</span>
-                    )}
-                  </div>
-                  <div className="border-t border-border pt-3 flex justify-between font-display text-lg font-bold text-secondary">
+                  
+                  <div className="flex justify-between items-center font-bold text-base text-secondary pt-1">
                     <span>Total Amount</span>
                     <span>{formatINR(total)}</span>
                   </div>
+                  
                   {savings > 0 && (
-                    <div className="bg-green-50 border border-green-200 rounded-md p-2 text-center text-green-800 text-sm font-medium">
-                      ✅ You'll save {formatINR(savings)} on this order!
+                    <div className="bg-[#e5f7ed] rounded-md p-3 mt-4 text-center text-[#11883e] text-sm font-medium flex items-center justify-center gap-1.5">
+                      <div className="bg-[#11883e] text-white rounded-sm text-[10px] w-4 h-4 flex items-center justify-center font-bold">%</div> 
+                      You'll save {formatINR(savings)} on this order!
                     </div>
                   )}
                 </div>
-                <div className="text-xs text-muted-foreground mt-4 space-y-1">
-                  <p>🚚 Estimated delivery: 5–7 business days via courier</p>
-                  <p>Courier partner & tracking details shared after dispatch</p>
-                </div>
-                <Button variant="hero" className="w-full mt-4 hidden lg:flex" size="lg" onClick={() => nav("/checkout/address")}>
-                  Proceed to Checkout
+                <Button className="w-full mt-5 hidden lg:block bg-[#ffc200] hover:bg-[#f3b600] text-black font-semibold text-[15px]" size="lg" onClick={() => nav("/checkout/address")}>
+                  Place Order
                 </Button>
               </Card>
 
-              <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
-                <ShieldCheck className="h-4 w-4 text-primary" />
-                <span>Safe payments · Genuine Gau Products · Trusted Courier Delivery</span>
+              <div className="flex items-center gap-4 mt-6 px-2 opacity-80">
+                <ShieldCheck className="h-8 w-8 text-muted-foreground shrink-0" strokeWidth={1.5} />
+                <span className="text-xs text-muted-foreground font-medium leading-relaxed">Safe and secure payments. Easy returns. 100% Authentic products.</span>
               </div>
             </div>
           </div>
@@ -152,14 +149,20 @@ const Cart = () => {
       </main>
 
       {/* Sticky bottom bar (mobile) */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-background border-t border-border shadow-warm">
-        <div className="container-page py-3 flex items-center gap-3">
-          <div className="flex-1">
-            {savings > 0 && <div className="text-xs text-muted-foreground line-through">{formatINR(mrpTotal)}</div>}
-            <div className="font-display text-lg font-bold text-secondary">{formatINR(total)}</div>
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-border shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+        <div className="container-page py-3 px-4 flex items-center justify-between gap-4">
+          <div>
+            {savings > 0 && <div className="text-xs text-muted-foreground line-through decoration-muted-foreground/60">{formatINR(mrpTotal)}</div>}
+            <div className="font-bold text-lg text-secondary flex items-center gap-1.5 leading-none">
+              {formatINR(total)} <Info className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
           </div>
-          <Button variant="hero" size="lg" onClick={() => nav("/checkout/address")} className="flex-1">
-            Place Order →
+          <Button 
+            className="flex-1 max-w-[160px] bg-[#ffc200] hover:bg-[#f3b600] text-black font-semibold text-[15px] rounded border border-transparent shadow-none" 
+            size="lg" 
+            onClick={() => nav("/checkout/address")}
+          >
+            Place Order
           </Button>
         </div>
       </div>

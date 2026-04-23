@@ -16,11 +16,13 @@ import CheckoutPay from "./pages/CheckoutPay.tsx";
 import OrderConfirmed from "./pages/OrderConfirmed.tsx";
 import TrackOrder from "./pages/TrackOrder.tsx";
 import MyOrders from "./pages/MyOrders.tsx";
+import Donators from "./pages/Donators.tsx";
 import AdminLogin from "./pages/admin/AdminLogin.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import AdminProducts from "./pages/admin/AdminProducts.tsx";
 import AdminCows from "./pages/admin/AdminCows.tsx";
 import AdminBlog from "./pages/admin/AdminBlog.tsx";
+import AdminDonors from "./pages/admin/AdminDonors.tsx";
 
 // Seed default data on first visit
 seedIfEmpty();
@@ -46,11 +48,13 @@ const App = () => (
               <Route path="/order-confirmed/:orderId" element={<OrderConfirmed />} />
               <Route path="/track-order" element={<TrackOrder />} />
               <Route path="/my-orders" element={<MyOrders />} />
+              <Route path="/donators" element={<Donators />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
               <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
               <Route path="/admin/cows" element={<AdminRoute><AdminCows /></AdminRoute>} />
               <Route path="/admin/blog" element={<AdminRoute><AdminBlog /></AdminRoute>} />
+              <Route path="/admin/donors" element={<AdminRoute><AdminDonors /></AdminRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </CartProvider>

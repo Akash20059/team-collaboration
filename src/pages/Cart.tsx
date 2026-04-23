@@ -1,41 +1,109 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useCart } from "@/hooks/useCart";
 import { Navbar } from "@/components/site/Navbar";
 import { Button } from "@/components/ui/button";
-import { Minus, Plus, MapPin, Phone, Receipt, Zap } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { QRCodeSVG } from "qrcode.react";
-import { useCart } from "@/hooks/useCart";
-import { computeDelivery, formatINR, SITE_CONFIG } from "@/lib/config";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import {
+  Minus, Plus, Trash2, ArrowLeft, ChevronRight, ChevronDown,
+  ChevronUp, MapPin, Phone, User, Loader2, Receipt,
+} from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { computeDelivery, formatINR } from "@/lib/config";
+import { getSavedAddress, saveAddress, SavedAddress } from "@/lib/savedAddress";
+import { addMyOrderId } from "@/lib/myOrders";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UPISheet, UPI_APPS, ANY_UPI, type UPIApp } from "@/components/checkout/UPISheet";
+import { z } from "zod";
 
+/* ─── Device detection ─── */
+const isMobileDevice = () =>
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+
+/* ─── UPI app definitions ─── */
+type UpiApp = { id: string; name: string; scheme: string; bg: string; initial: string };
+
+const RECOMMENDED_APPS: UpiApp[] = [
+  { id: "bhim",   name: "BHIM UPI",       scheme: "upi",     bg: "bg-orange-600",  initial: "B"  },
+  { id: "paytm",  name: "Paytm UPI",      scheme: "paytmmp", bg: "bg-sky-500",     initial: "P"  },
+  { id: "gpay",   name: "Google Pay UPI", scheme: "tez",     bg: "bg-emerald-600", initial: "G"  },
+];
+
+const OTHER_APPS: UpiApp[] = [
+  { id: "phonepe",   name: "PhonePe UPI",   scheme: "phonepe", bg: "bg-violet-700",  initial: "Ph" },
+  { id: "amazonpay", name: "Amazon Pay UPI",scheme: "upi",     bg: "bg-slate-800",   initial: "A"  },
+  { id: "navi",      name: "Navi UPI",      scheme: "upi",     bg: "bg-indigo-700",  initial: "N"  },
+];
+
+const ALL_APPS = [...RECOMMENDED_APPS, ...OTHER_APPS];
+
+/* ─── Validation ─── */
+const addressSchema = z.object({
+  full_name:    z.string().trim().min(2, "Enter your name"),
+  mobile:       z.string().regex(/^[0-9]{10}$/, "Enter a valid 10-digit mobile number"),
+  address_line1:z.string().trim().min(5, "Enter your delivery address"),
+  pincode:      z.string().regex(/^[0-9]{6}$/, "Enter a 6-digit pincode"),
+});
+
+/* ─── UPI app row ─── */
+function AppRow({ app, active, onSelect }: { app: UpiApp; active: boolean; onSelect: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors border-b border-border/50 last:border-0 ${
+        active ? "bg-primary/5" : "hover:bg-muted/50"
+      }`}
+    >
+      <div className={`h-10 w-10 rounded-lg ${app.bg} text-white grid place-items-center text-[11px] font-bold shrink-0`}>
+        {app.initial}
+      </div>
+      <span className="flex-1 font-medium text-[15px] text-foreground">{app.name}</span>
+      {active && <div className="h-2 w-2 rounded-full bg-primary" />}
+      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+    </button>
+  );
+}
+
+/* ─── Main component ─── */
 const Cart = () => {
-  const { items, setQty, subtotal, mrpTotal, clear } = useCart();
+  const { items, setQty, remove, subtotal, mrpTotal, clear } = useCart();
   const nav = useNavigate();
-  
-  const [address, setAddress] = useState("");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [upiApp, setUpiApp] = useState<UPIApp>(UPI_APPS[0]);
-  const [qrOpen, setQrOpen] = useState(false);
-
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   const delivery = computeDelivery(subtotal);
-  const total = subtotal + delivery;
-  const savings = mrpTotal - subtotal;
+  const total    = subtotal + delivery;
+  const savings  = mrpTotal - subtotal;
 
+  const [form, setForm] = useState<SavedAddress>({
+    full_name: "", mobile: "", pincode: "", address_line1: "",
+    address_line2: "", city: "", state: "", landmark: "",
+  });
+  const [deliveryOpen,  setDeliveryOpen]  = useState(false);
+  const [billOpen,      setBillOpen]      = useState(false);
+  const [paymentOpen,   setPaymentOpen]   = useState(false);
+  const [selectedApp,   setSelectedApp]   = useState<string>("gpay");
+  const [busy,          setBusy]          = useState(false);
+  const isMobile = isMobileDevice();
+
+  useEffect(() => {
+    const s = getSavedAddress();
+    if (s) { setForm(s); }
+  }, []);
+
+  /* ─── Empty state ─── */
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-[#f3f4f6] flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col">
         <Navbar />
-        <main className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-24 pb-12">
+        <main className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-24">
           <div className="text-7xl mb-6">🛒</div>
           <h1 className="font-display text-3xl font-bold text-secondary">Your cart is empty</h1>
-          <p className="text-muted-foreground mt-2 max-w-md">Discover our pure Gau products lovingly made in our gaushala.</p>
+          <p className="text-muted-foreground mt-2 max-w-md">
+            Discover our pure Gau products lovingly made in our gaushala.
+          </p>
           <Button variant="hero" size="lg" className="mt-6" onClick={() => nav("/#products")}>
             Explore Our Products
           </Button>
@@ -44,265 +112,384 @@ const Cart = () => {
     );
   }
 
-  const handlePlaceOrder = () => {
-    if (!name.trim()) return toast.error("Please enter your name");
-    if (!phone.trim() || phone.length < 10) return toast.error("Please enter a valid phone number");
-    if (!address.trim()) return toast.error("Please enter your delivery address");
+  /* ─── Place order ─── */
+  const handlePlaceOrder = async () => {
+    const parsed = addressSchema.safeParse(form);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0].message);
+      if (!deliveryOpen) setDeliveryOpen(true);
+      return;
+    }
+    // On desktop we use QR code flow; on mobile we use UPI intent flow
+    const effectiveAppId = isMobile ? selectedApp : "desktop_qr";
+    const app = isMobile ? ALL_APPS.find((a) => a.id === selectedApp) : { id: "desktop_qr", name: "UPI QR Code" };
+    if (!app) { toast.error("Please choose a UPI app"); return; }
 
-    if (isMobile) {
-      // Construct Intent URI
-      const upiLink = `${upiApp.intentCode}?pa=${encodeURIComponent(SITE_CONFIG.upiId)}&pn=${encodeURIComponent(SITE_CONFIG.upiName)}&am=${total}&cu=INR&tn=${encodeURIComponent("Goumandira Order")}`;
+    setBusy(true);
+    try {
+      const orderItems = items.map((i) => ({
+        id: i.id, name: i.name, price: i.price, quantity: i.quantity, image_url: i.image_url,
+      }));
 
-      // Send WhatsApp msg as backup since there is no backend DB for orders
-      const itemsList = items.map((i) => `• ${i.name} x ${i.quantity}`).join("%0A");
-      const msg = `🙏 New Order Request%0A👤 ${name} (${phone})%0A📍 ${address}%0A💰 Total: ${formatINR(total)}%0A💳 Paying via ${upiApp.name}%0A%0AItems:%0A${itemsList}`;
-      
-      setTimeout(() => {
-        window.location.href = upiLink;
-        clear(); // Clear cart after initiating payment
-      }, 1500);
+      const { data, error } = await supabase
+        .from("orders")
+        .insert({
+          customer_name:    form.full_name,
+          customer_mobile:  form.mobile,
+          address_line1:    form.address_line1,
+          address_line2:    form.address_line2 || null,
+          city:             form.city || "—",
+          state:            form.state || "—",
+          pincode:          form.pincode,
+          landmark:         form.landmark || null,
+          items:            orderItems,
+          subtotal,
+          delivery_charge:  delivery,
+          discount:         Math.max(0, mrpTotal - subtotal),
+          total_amount:     total,
+          payment_method:   "upi",
+          payment_reference: isMobile ? `Opened ${app.name}` : "Desktop QR pending",
+        })
+        .select("order_id")
+        .single();
 
-      window.open(`https://wa.me/${SITE_CONFIG.whatsappNumber}?text=${msg}`, "_blank");
-      toast.success("Opening UPI app...");
-    } else {
-      // Desktop fallback: Show QR Code
-      setQrOpen(true);
+      if (error) throw error;
+      saveAddress(form);
+      addMyOrderId(data.order_id);
+      clear();
+
+      // Go to payment page; UPI intent (mobile) or QR code (desktop)
+      nav(`/checkout/pay/${data.order_id}`, {
+        state: { appId: effectiveAppId, appName: app.name, total },
+      });
+    } catch (err: any) {
+      toast.error(err.message || "Could not place order");
+    } finally {
+      setBusy(false);
     }
   };
 
-  const confirmDesktopOrder = () => {
-    const itemsList = items.map((i) => `• ${i.name} x ${i.quantity}`).join("%0A");
-    const msg = `🙏 New Order Request%0A👤 ${name} (${phone})%0A📍 ${address}%0A💰 Total: ${formatINR(total)}%0A💳 Paid via UPI QR code%0A%0AItems:%0A${itemsList}`;
-    window.open(`https://wa.me/${SITE_CONFIG.whatsappNumber}?text=${msg}`, "_blank");
-    clear();
-    setQrOpen(false);
-    toast.success("Order request sent!");
-    nav("/");
-  };
+  const activeApp = ALL_APPS.find((a) => a.id === selectedApp)!;
+  const hasAddress = form.full_name && form.address_line1 && form.mobile && form.pincode;
 
   return (
-    <div className="min-h-screen bg-[#f3f4f6] flex flex-col pb-[120px]">
+    <div className="min-h-screen bg-[#f5f5f5] flex flex-col">
       <Navbar />
 
-      <main className="flex-1 pt-20">
-        <div className="max-w-md mx-auto w-full space-y-4 px-3 sm:px-4 mt-4">
+      <main className="flex-1 pt-20 pb-28">
+        <div className="container-page max-w-2xl">
 
-          {/* Delivery Estimate */}
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-border/40 flex items-center gap-3">
-            <Zap className="h-5 w-5 text-green-600 shrink-0" fill="currentColor" />
-            <div>
-              <p className="font-semibold text-[15px] text-secondary">Delivery in <span className="text-green-600">5-7 business days</span></p>
-              <p className="text-xs text-muted-foreground mt-0.5">Dispatched securely via trusted couriers</p>
-            </div>
+          {/* ── Header ── */}
+          <div className="flex items-center gap-3 py-4">
+            <button onClick={() => nav(-1)} aria-label="Back" className="p-1 -ml-1 hover:bg-muted rounded-full">
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="text-lg font-semibold text-foreground">
+              Bill total: <span className="font-bold text-secondary">{formatINR(total)}</span>
+            </h1>
           </div>
 
-          {/* Contact & Address forms (inline) */}
-          <div className="bg-white rounded-xl shadow-sm border border-border/40 divide-y divide-border/40">
-            {/* Address Row */}
-            <div className="p-4 flex items-start gap-3">
-              <MapPin className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-[13px] text-muted-foreground font-semibold mb-1">Delivery Address *</p>
-                <textarea 
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Enter full address with pincode..."
-                  className="w-full text-[15px] text-secondary font-medium outline-none resize-none bg-transparent placeholder:font-normal placeholder:text-muted-foreground/60 h-14"
-                />
-              </div>
-            </div>
-
-            {/* Contact Row */}
-            <div className="p-4 flex items-start gap-3">
-              <Phone className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-              <div className="flex-1 space-y-3">
-                <div>
-                  <p className="text-[13px] text-muted-foreground font-semibold mb-1">Name *</p>
-                  <input 
-                    type="text" 
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Adhoksh Javali"
-                    className="w-full text-[15px] text-secondary font-medium outline-none bg-transparent placeholder:font-normal placeholder:text-muted-foreground/60"
-                  />
-                </div>
-                <div className="border-t border-border/40 pt-3">
-                  <p className="text-[13px] text-muted-foreground font-semibold mb-1">Phone Number *</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[15px] text-secondary font-medium">+91</span>
-                    <input 
-                      type="tel" 
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="9876543210"
-                      maxLength={10}
-                      className="w-full text-[15px] text-secondary font-medium outline-none bg-transparent placeholder:font-normal placeholder:text-muted-foreground/60"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Product List */}
-          <div className="bg-white rounded-xl shadow-sm border border-border/40 overflow-hidden">
-            <div className="p-4 bg-orange-50/50 border-b border-orange-100/50">
-              <p className="text-sm font-semibold text-secondary">Items in cart</p>
-            </div>
-            <div className="divide-y divide-border/40">
+          {/* ── Items ── */}
+          <div className="bg-white rounded-xl shadow-sm mb-3">
+            <div className="divide-y divide-border/50">
               {items.map((it) => (
-                <div key={it.id} className="p-4 flex gap-3">
-                  <div className="mt-1">
-                    <div className="h-4 w-4 border border-green-600 flex items-center justify-center rounded-sm">
-                      <div className="h-2 w-2 rounded-full bg-green-600" />
-                    </div>
+                <div key={it.id} className="flex items-center gap-3 px-4 py-3">
+                  {it.image_url
+                    ? <img src={it.image_url} alt={it.name} className="h-12 w-12 object-cover rounded-md shrink-0" />
+                    : <div className="h-12 w-12 rounded-md bg-muted shrink-0" />
+                  }
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-[14px] text-foreground leading-tight truncate">{it.name}</p>
+                    {it.mrp && it.mrp > it.price && (
+                      <p className="text-[11px] text-muted-foreground line-through">{formatINR(it.mrp)}</p>
+                    )}
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h3 className="font-semibold text-[15px] text-secondary leading-tight">{it.name}</h3>
-                        {it.mrp && it.mrp > it.price ? (
-                          <div className="mt-1 flex gap-2 items-center">
-                            <p className="text-[14px] text-secondary font-medium">{formatINR(it.price * it.quantity)}</p>
-                            <span className="text-xs text-muted-foreground line-through">{formatINR(it.mrp * it.quantity)}</span>
-                          </div>
-                        ) : (
-                          <p className="text-[14px] text-secondary font-medium mt-1">{formatINR(it.price * it.quantity)}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-1.5 leading-snug">{it.description?.substring(0, 50)}...</p>
-                      </div>
-                      
-                      {/* Quantity button */}
-                      <div className="flex flex-col items-center">
-                        <div className="flex items-center justify-between border border-primary/40 rounded-lg shadow-sm w-[76px] h-[34px] bg-primary/5">
-                          <button onClick={() => setQty(it.id, it.quantity - 1)} className="w-[26px] h-full flex items-center justify-center text-primary/80 hover:bg-primary/10 rounded-l-lg transition-colors">
-                            <Minus className="h-3 w-3" strokeWidth={3} />
-                          </button>
-                          <span className="text-[14px] font-bold text-primary">{it.quantity}</span>
-                          <button onClick={() => setQty(it.id, it.quantity + 1)} disabled={it.quantity >= it.max_stock} className="w-[26px] h-full flex items-center justify-center text-primary/80 hover:bg-primary/10 rounded-r-lg transition-colors disabled:opacity-50">
-                            <Plus className="h-3 w-3" strokeWidth={3} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                  {/* Qty stepper */}
+                  <div className="flex items-center border border-primary rounded-md text-primary text-sm shrink-0">
+                    <button
+                      onClick={() => (it.quantity <= 1 ? remove(it.id) : setQty(it.id, it.quantity - 1))}
+                      className="px-2 py-1 hover:bg-primary/10"
+                      aria-label="Decrease"
+                    >
+                      {it.quantity <= 1 ? <Trash2 className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                    </button>
+                    <span className="px-2 font-semibold w-6 text-center">{it.quantity}</span>
+                    <button
+                      onClick={() => setQty(it.id, it.quantity + 1)}
+                      disabled={it.quantity >= it.max_stock}
+                      className="px-2 py-1 hover:bg-primary/10 disabled:opacity-40"
+                      aria-label="Increase"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
                   </div>
+                  <span className="w-16 text-right font-semibold text-[14px] text-secondary shrink-0">
+                    {formatINR(it.price * it.quantity)}
+                  </span>
                 </div>
               ))}
             </div>
-            <div className="p-4 border-t border-border/40 text-center">
-              <button onClick={() => nav("/#products")} className="text-[15px] font-medium text-primary flex items-center justify-center gap-1 mx-auto">
+            <div className="px-4 py-3 border-t border-border/50">
+              <Link
+                to="/#products"
+                className="inline-flex items-center gap-1 text-primary text-sm font-medium hover:underline"
+              >
                 <Plus className="h-4 w-4" /> Add more items
-              </button>
+              </Link>
             </div>
           </div>
 
-          {/* Bill Summary */}
-          <div className="bg-white rounded-xl shadow-sm border border-border/40 p-4">
-            <div className="flex items-center gap-2 mb-4 text-secondary">
-              <Receipt className="h-5 w-5 text-muted-foreground" />
-              <h2 className="font-bold text-[15px]">Bill Details</h2>
-            </div>
-            
-            <div className="space-y-3 text-[14px]">
-              <div className="flex justify-between items-center text-muted-foreground">
-                <span>Item Total</span>
-                <span className="text-secondary">{formatINR(subtotal)}</span>
+          {/* ── Delivery details (collapsible) ── */}
+          <div className="bg-white rounded-xl shadow-sm mb-3 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setDeliveryOpen((v) => !v)}
+              className="w-full flex items-center gap-3 px-4 py-4 text-left hover:bg-muted/30 transition-colors"
+            >
+              <MapPin className="h-5 w-5 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                {hasAddress ? (
+                  <>
+                    <p className="text-[13px] font-semibold text-foreground">
+                      {form.full_name}
+                      <span className="font-normal text-muted-foreground"> &nbsp;•&nbsp; +91-{form.mobile}</span>
+                    </p>
+                    <p className="text-[12px] text-muted-foreground truncate mt-0.5">
+                      {form.address_line1}{form.pincode ? ` - ${form.pincode}` : ""}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[13px] font-semibold text-foreground">Delivery address</p>
+                    <p className="text-[12px] text-primary">Tap to add your address</p>
+                  </>
+                )}
               </div>
-              
-              <div className="flex justify-between items-center text-muted-foreground">
-                <span>Delivery Partner Fee</span>
-                <span className="text-secondary">{delivery === 0 ? "FREE" : formatINR(delivery)}</span>
-              </div>
-              <div className="border-b border-border/50 border-dashed" />
-              
-              <div className="flex justify-between items-center font-bold text-[16px] text-secondary">
-                <span>Total Pay</span>
-                <span>{formatINR(total)}</span>
-              </div>
-              
-              {savings > 0 && (
-                <div className="bg-[#e5f7ed] rounded-lg p-2.5 mt-2 text-center text-[#11883e] text-xs font-semibold">
-                  You're saving {formatINR(savings)} on this order!
+              {deliveryOpen
+                ? <ChevronUp   className="h-4 w-4 text-muted-foreground shrink-0" />
+                : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+              }
+            </button>
+
+            {deliveryOpen && (
+              <div className="px-4 pb-4 border-t border-border/40 space-y-3 pt-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="name" className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+                      <User className="h-3 w-3" /> Full name *
+                    </Label>
+                    <Input
+                      id="name"
+                      value={form.full_name}
+                      onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                      placeholder="Your name"
+                      maxLength={100}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="mobile" className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+                      <Phone className="h-3 w-3" /> Mobile *
+                    </Label>
+                    <Input
+                      id="mobile"
+                      type="tel"
+                      inputMode="numeric"
+                      value={form.mobile}
+                      onChange={(e) => setForm({ ...form, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                      placeholder="10-digit number"
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
+                <div>
+                  <Label htmlFor="addr" className="text-xs text-muted-foreground mb-1 block">
+                    Delivery address *
+                  </Label>
+                  <Input
+                    id="addr"
+                    value={form.address_line1}
+                    onChange={(e) => setForm({ ...form, address_line1: e.target.value })}
+                    placeholder="House no, street, area, city, state"
+                    maxLength={200}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="pincode" className="text-xs text-muted-foreground mb-1 block">Pincode *</Label>
+                  <Input
+                    id="pincode"
+                    inputMode="numeric"
+                    value={form.pincode}
+                    onChange={(e) => setForm({ ...form, pincode: e.target.value.replace(/\D/g, "").slice(0, 6) })}
+                    placeholder="6-digit pincode"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDeliveryOpen(false)}
+                  className="w-full text-center text-sm text-primary font-medium py-1"
+                >
+                  Save & close ↑
+                </button>
+              </div>
+            )}
           </div>
-          
-          <div className="text-[11px] text-muted-foreground/70 text-center pb-8 px-4 leading-relaxed">
-            By placing this order, you agree to the conditions of Goumandira. Authentic products packed with devotion.
+
+          {/* ── Total bill (collapsible) ── */}
+          <div className="bg-white rounded-xl shadow-sm mb-3 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setBillOpen((v) => !v)}
+              className="w-full flex items-center gap-3 px-4 py-4 text-left hover:bg-muted/30 transition-colors"
+            >
+              <Receipt className="h-5 w-5 text-primary shrink-0" />
+              <div className="flex-1">
+                <p className="text-[13px] font-semibold text-foreground">Total Bill {formatINR(total)}</p>
+                <p className="text-[12px] text-muted-foreground">Incl. delivery charges</p>
+              </div>
+              {billOpen
+                ? <ChevronUp   className="h-4 w-4 text-muted-foreground shrink-0" />
+                : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+              }
+            </button>
+
+            {billOpen && (
+              <div className="px-4 pb-4 border-t border-border/40 pt-3 text-[13px] space-y-2">
+                {items.map((it) => (
+                  <div key={it.id} className="flex justify-between text-muted-foreground">
+                    <span>{it.name} <span className="text-xs">× {it.quantity}</span></span>
+                    <span className="font-medium text-foreground">{formatINR(it.price * it.quantity)}</span>
+                  </div>
+                ))}
+                <div className="border-t border-dashed border-border/60 pt-2 space-y-1.5">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Item total</span>
+                    <span>{formatINR(subtotal)}</span>
+                  </div>
+                  {savings > 0 && (
+                    <div className="flex justify-between text-green-700">
+                      <span>Discount</span>
+                      <span>− {formatINR(savings)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Delivery charge</span>
+                    <span>{delivery === 0 ? "FREE" : formatINR(delivery)}</span>
+                  </div>
+                </div>
+                <div className="border-t border-border pt-2 flex justify-between font-bold text-secondary text-[14px]">
+                  <span>Total</span>
+                  <span>{formatINR(total)}</span>
+                </div>
+                {savings > 0 && (
+                  <div className="bg-green-50 text-green-700 text-[12px] rounded-lg px-3 py-2 text-center font-medium">
+                    You save {formatINR(savings)} on this order!
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
         </div>
       </main>
 
-      {/* Zomato style fixed bottom bar */}
-      <div className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-border shadow-[0_-5px_15px_rgba(0,0,0,0.05)] rounded-t-xl overflow-hidden">
-        
-        {/* Payment selector strip */}
-        <UPISheet 
-          selectedApp={upiApp} 
-          onSelect={setUpiApp}
-          open={sheetOpen}
-          onOpenChange={setSheetOpen}
-        >
-          <button className="w-full flex items-center justify-between px-4 py-2.5 bg-[#f8f8f8] border-b border-border/40 hover:bg-[#f0f0f0] transition-colors">
-            <div className="flex flex-col items-start">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Pay using ▼</p>
-              <div className="flex items-center gap-2">
-                {upiApp.icon ? (
-                  <img src={upiApp.icon} alt="" className="h-4 object-contain" />
-                ) : (
-                  <div className="h-4 w-4 bg-secondary rounded flex items-center justify-center">
-                    <span className="text-xs text-white">UP</span>
-                  </div>
-                )}
-                <span className="text-[14px] font-bold text-secondary">{upiApp.name}</span>
-              </div>
+      {/* ── Sticky bottom bar ── */}
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-border shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
+        <div className="container-page max-w-2xl flex items-center gap-2 py-2.5">
+          {/* Left: pay using ── mobile shows app picker, desktop shows QR label */}
+          {isMobile ? (
+            <button
+              type="button"
+              onClick={() => setPaymentOpen(true)}
+              className="flex flex-col items-start min-w-0 flex-1 px-1 py-1 rounded-lg hover:bg-muted/40 transition-colors"
+            >
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold flex items-center gap-0.5">
+                Pay using <ChevronUp className="h-3 w-3" />
+              </span>
+              <span className="text-[13px] font-semibold text-secondary truncate leading-tight">{activeApp.name}</span>
+            </button>
+          ) : (
+            <div className="flex flex-col items-start min-w-0 flex-1 px-1 py-1">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+                Pay via
+              </span>
+              <span className="text-[13px] font-semibold text-secondary truncate leading-tight flex items-center gap-1">
+                📱 UPI QR Code
+              </span>
             </div>
-            <p className="text-[11px] text-muted-foreground/70">Tap to change</p>
-          </button>
-        </UPISheet>
+          )}
 
-        {/* Place order strip */}
-        <div className="flex px-4 py-3 bg-white">
-          <button onClick={handlePlaceOrder} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-md transition-colors flex items-stretch overflow-hidden h-[52px]">
-            <div className="flex flex-col justify-center px-4 bg-black/20 items-start min-w-[120px]">
-              <span className="text-[16px] font-bold leading-tight text-white">{formatINR(total)}</span>
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-white opacity-90">Total</span>
+          {/* Divider */}
+          <div className="w-px h-9 bg-border/70 shrink-0" />
+
+          {/* Right: total + place order */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="text-right">
+              <div className="text-[13px] font-bold text-secondary leading-none">{formatINR(total)}</div>
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Total</div>
             </div>
-            <div className="flex-1 flex items-center justify-center gap-1 font-bold text-[17px] text-white">
-              Place Order
-              <svg className="w-5 h-5 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
-            </div>
-          </button>
+            <Button
+              onClick={handlePlaceOrder}
+              disabled={busy}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-4 h-10 rounded-lg"
+            >
+              {busy
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <span className="flex items-center gap-1">Place Order <ChevronRight className="h-4 w-4" /></span>
+              }
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Desktop QR Modal */}
-      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
-        <DialogContent className="sm:max-w-md text-center border-border/40 select-text">
-          <DialogHeader>
-            <DialogTitle className="text-center font-display text-2xl text-secondary">Scan to Pay</DialogTitle>
-            <DialogDescription className="text-center text-[15px] pt-1">
-              Please scan this QR code with any UPI app on your phone to complete your order of <strong className="text-primary">{formatINR(total)}</strong>.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center justify-center p-6 bg-slate-50/50 rounded-xl border border-border/40 my-2 mx-auto w-fit shadow-inner">
-            <div className="bg-white p-3 rounded-lg shadow-sm border border-border/30">
-              <QRCodeSVG 
-                value={`${upiApp.intentCode}?pa=${encodeURIComponent(SITE_CONFIG.upiId)}&pn=${encodeURIComponent(SITE_CONFIG.upiName)}&am=${total}&cu=INR&tn=${encodeURIComponent("Goumandira Order")}`} 
-                size={220} 
-              />
+      {/* ── Payment method sheet (slides up from bottom) ── */}
+      <Sheet open={paymentOpen} onOpenChange={setPaymentOpen}>
+        <SheetContent
+          side="bottom"
+          className="p-0 rounded-t-2xl max-h-[85vh] overflow-y-auto"
+        >
+          {/* Sheet header */}
+          <div className="px-5 pt-5 pb-3 border-b border-border/60">
+            <div className="w-10 h-1 bg-muted rounded-full mx-auto mb-4" />
+            <p className="text-[13px] text-muted-foreground font-medium">
+              Bill total: <span className="font-bold text-secondary">{formatINR(total)}</span>
+            </p>
+          </div>
+
+          {/* Recommended */}
+          <div className="px-4 pt-4">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-2 px-1">
+              Recommended
+            </p>
+            <div className="rounded-xl border border-border/70 overflow-hidden bg-white">
+              {RECOMMENDED_APPS.map((app) => (
+                <AppRow
+                  key={app.id}
+                  app={app}
+                  active={selectedApp === app.id}
+                  onSelect={() => { setSelectedApp(app.id); setPaymentOpen(false); }}
+                />
+              ))}
             </div>
           </div>
-          <div className="bg-muted/40 py-2.5 px-4 rounded-lg flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-[10px]">Merchant UPI ID</span>
-            <code className="text-sm font-bold text-secondary">{SITE_CONFIG.upiId}</code>
+
+          {/* Other UPI apps */}
+          <div className="px-4 pt-4 pb-6">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-2 px-1">
+              Pay by any UPI app
+            </p>
+            <div className="rounded-xl border border-border/70 overflow-hidden bg-white">
+              {OTHER_APPS.map((app) => (
+                <AppRow
+                  key={app.id}
+                  app={app}
+                  active={selectedApp === app.id}
+                  onSelect={() => { setSelectedApp(app.id); setPaymentOpen(false); }}
+                />
+              ))}
+            </div>
           </div>
-          <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-base h-12 shadow-md" size="lg" onClick={confirmDesktopOrder}>
-            I have made the payment
-          </Button>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
+
     </div>
   );
 };

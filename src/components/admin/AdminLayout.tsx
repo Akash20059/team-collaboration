@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Cog as Cow, FileText, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, Package, Cog as Cow, FileText, LogOut, Menu, Heart } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -12,6 +12,7 @@ const navItems = [
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/cows", label: "Our Cows", icon: Cow },
   { to: "/admin/blog", label: "Updates", icon: FileText },
+  { to: "/admin/donors", label: "Donators", icon: Heart },
 ];
 
 const SidebarContent = ({ onNav }: { onNav?: () => void }) => (

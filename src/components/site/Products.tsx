@@ -33,6 +33,7 @@ export const Products = () => {
     add({
       id: p.id,
       name: p.name,
+      description: p.description,
       price: Number(p.price),
       mrp: p.mrp ? Number(p.mrp) : null,
       image_url: p.image_url,

@@ -16,6 +16,7 @@ import CheckoutPay from "./pages/CheckoutPay.tsx";
 import OrderConfirmed from "./pages/OrderConfirmed.tsx";
 import TrackOrder from "./pages/TrackOrder.tsx";
 import MyOrders from "./pages/MyOrders.tsx";
+import Donators from "./pages/Donators.tsx";
 import AdminLogin from "./pages/admin/AdminLogin.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import AdminProducts from "./pages/admin/AdminProducts.tsx";
@@ -59,6 +60,7 @@ const App = () => (
               <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
               <Route path="/admin/cows" element={<AdminRoute><AdminCows /></AdminRoute>} />
               <Route path="/admin/blog" element={<AdminRoute><AdminBlog /></AdminRoute>} />
+              <Route path="/admin/donors" element={<AdminRoute><AdminDonors /></AdminRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </CartProvider>

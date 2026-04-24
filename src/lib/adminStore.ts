@@ -44,6 +44,18 @@ export interface Cow {
 
 export type BlogCategory = "new_born_calf" | "program" | "function" | "general_update";
 
+export type DonationType = "one-time" | "monthly";
+
+export interface Donor {
+  id: string;
+  name: string;
+  type: DonationType;
+  amount: number;
+  donated_at: string;
+  message?: string;
+  created_at: string;
+}
+
 export interface BlogPost {
   id: string;
   title: string;
@@ -201,6 +213,34 @@ export function saveBlogPost(data: Omit<BlogPost, "id" | "created_at"> & { id?: 
 
 export function deleteBlogPost(id: string): void {
   setList(KEYS.blog, getBlogPosts().filter((p) => p.id !== id));
+}
+
+// ─── Donors CRUD ───────────────────────────────────────────────────────────
+
+export function getDonors(): Donor[] {
+  return getList<Donor>(KEYS.donors).sort(
+    (a, b) => new Date(b.donated_at).getTime() - new Date(a.donated_at).getTime()
+  );
+}
+
+export function saveDonor(data: Omit<Donor, "id" | "created_at"> & { id?: string }): Donor {
+  const list = getDonors();
+  if (data.id) {
+    const idx = list.findIndex((d) => d.id === data.id);
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...data, id: data.id };
+      setList(KEYS.donors, list);
+      return list[idx];
+    }
+  }
+  const item: Donor = { ...data, id: uuid(), created_at: new Date().toISOString() };
+  list.unshift(item);
+  setList(KEYS.donors, list);
+  return item;
+}
+
+export function deleteDonor(id: string): void {
+  setList(KEYS.donors, getDonors().filter((d) => d.id !== id));
 }
 
 // ─── Export / Import ───────────────────────────────────────────────────────

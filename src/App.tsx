@@ -23,7 +23,9 @@ import AdminProducts from "./pages/admin/AdminProducts.tsx";
 import AdminCows from "./pages/admin/AdminCows.tsx";
 import AdminBlog from "./pages/admin/AdminBlog.tsx";
 import AdminDonors from "./pages/admin/AdminDonors.tsx";
-
+import AdminOrders from "./pages/admin/AdminOrders.tsx";
+import DonatePage from "./pages/DonatePage.tsx";
+import ProductsPage from "./pages/ProductsPage.tsx";
 // Seed default data on first visit
 seedIfEmpty();
 
@@ -49,8 +51,11 @@ const App = () => (
               <Route path="/track-order" element={<TrackOrder />} />
               <Route path="/my-orders" element={<MyOrders />} />
               <Route path="/donators" element={<Donators />} />
+              <Route path="/donate" element={<DonatePage />} />
+              <Route path="/products" element={<ProductsPage />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+              <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
               <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
               <Route path="/admin/cows" element={<AdminRoute><AdminCows /></AdminRoute>} />
               <Route path="/admin/blog" element={<AdminRoute><AdminBlog /></AdminRoute>} />

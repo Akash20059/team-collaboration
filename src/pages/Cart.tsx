@@ -13,6 +13,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { computeDelivery, formatINR } from "@/lib/config";
 import { getSavedAddress, saveAddress, SavedAddress } from "@/lib/savedAddress";
 import { addMyOrderId } from "@/lib/myOrders";
+import { addCustomerOrder } from "@/lib/adminStore";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -156,6 +157,24 @@ const Cart = () => {
       if (error) throw error;
       saveAddress(form);
       addMyOrderId(data.order_id);
+
+      // ── Save to admin localStorage order store ──
+      addCustomerOrder({
+        id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+        order_id: data.order_id,
+        customer_name: form.full_name,
+        mobile: form.mobile,
+        address_line1: form.address_line1,
+        city: form.city || "—",
+        state: form.state || "—",
+        pincode: form.pincode,
+        items: items.map((i) => ({ name: i.name, qty: i.quantity, price: i.price })),
+        total_amount: total,
+        delivery_charge: delivery,
+        status: "pending",
+        placed_at: new Date().toISOString(),
+      });
+
       clear();
 
       // Go to payment page; UPI intent (mobile) or QR code (desktop)

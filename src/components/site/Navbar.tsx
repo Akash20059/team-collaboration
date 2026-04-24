@@ -42,6 +42,14 @@ export const Navbar = () => {
       window.location.href = "/donators";
       return;
     }
+    if (id === "donate") {
+      window.location.href = "/donate";
+      return;
+    }
+    if (id === "products") {
+      window.location.href = "/products";
+      return;
+    }
     if (window.location.pathname !== "/") {
       window.location.href = `/#${id}`;
       return;
@@ -52,19 +60,19 @@ export const Navbar = () => {
   return (
     <header className={`fixed inset-x-0 top-0 z-50 transition-all ${scrolled ? "bg-background/95 backdrop-blur shadow-soft" : "bg-background/70 backdrop-blur-sm"}`}>
       <div className="container-page flex items-center justify-between py-3">
-        <button onClick={() => go("home")} className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-full overflow-hidden shrink-0 border-[3px] border-[#D4540A]">
-            <img src={logo} alt="Shreemata Goumandira logo" className="h-full w-full object-cover scale-105" width={48} height={48} />
+        <button onClick={() => go("home")} className="flex items-center gap-2">
+          <div className="h-10 w-10 rounded-full overflow-hidden shrink-0 border-[3px] border-[#D4540A]">
+            <img src={logo} alt="Shreemata Goumandira logo" className="h-full w-full object-cover scale-105" width={40} height={40} />
           </div>
           <div className="text-left leading-tight">
-            <div className="font-display text-lg md:text-xl font-bold text-secondary">Shreemata Goumandira</div>
-            <div className="font-sanskrit text-xs text-primary hidden sm:block">श्रीमाता गौमंदिर</div>
+            <div className="font-display text-base md:text-lg font-bold text-secondary whitespace-nowrap">Shreemata Goumandira</div>
+            <div className="font-sanskrit text-xs text-primary hidden sm:block whitespace-nowrap">श्रीमाता गौमंदिर</div>
           </div>
         </button>
 
-        <nav className="hidden lg:flex items-center gap-1">
+        <nav className="hidden lg:flex items-center gap-0.5">
           {links.map((l) => (
-            <button key={l.id} onClick={() => go(l.id)} className="px-3 py-2 text-sm font-medium text-foreground/80 hover:text-primary transition-smooth">
+            <button key={l.id} onClick={() => go(l.id)} className="px-2 py-2 text-sm font-medium text-foreground/80 hover:text-primary transition-smooth whitespace-nowrap">
               {l.label}
             </button>
           ))}

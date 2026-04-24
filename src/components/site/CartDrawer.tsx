@@ -27,7 +27,7 @@ export const CartDrawer = () => {
             <p className="font-display text-lg text-secondary">Your cart is empty</p>
             <p className="text-sm text-muted-foreground mt-1">Add some sacred Gau products</p>
             <Button variant="hero" className="mt-6" onClick={() => setOpen(false)}>
-              Continue Shopping
+              Explore Products
             </Button>
           </div>
         ) : (

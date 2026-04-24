@@ -57,12 +57,16 @@ export const Products = () => {
         ) : products.length === 0 ? (
           <div className="text-center text-muted-foreground py-12">No products yet. Check back soon 🙏</div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="
+            flex overflow-x-auto snap-x snap-mandatory gap-5 pb-4 -mx-4 px-4
+            scrollbar-none
+            lg:grid lg:grid-cols-3 lg:gap-6 lg:overflow-visible lg:mx-0 lg:px-0 lg:pb-0
+          ">
             {products.map((p) => {
               const isOut = p.stock_status === "out_of_stock" || p.quantity_available <= 0;
               const isLow = p.stock_status === "low_stock" && p.quantity_available > 0;
               return (
-                <div key={p.id} className="group bg-card rounded-2xl overflow-hidden border border-border/60 shadow-soft hover:shadow-warm transition-smooth">
+                <div key={p.id} className="group bg-card rounded-2xl overflow-hidden border border-border/60 shadow-soft hover:shadow-warm transition-smooth snap-center shrink-0 w-[80vw] lg:w-auto">
                   <div className="relative aspect-[4/3] overflow-hidden">
                     {p.image_url ? (
                       <img src={p.image_url} alt={p.name} loading="lazy" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />

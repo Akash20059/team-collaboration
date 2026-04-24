@@ -1,7 +1,0 @@
-
-GEMINI_API_KEY="AIzaSyChW1Wk238nzyiHqSUO8k1mHESKZxfWhlk"
-GMX_API_BASE=https://arbitrum-api.gmxinfra.io/prices/tickers
-# Ignore environment files
-venv/
-.env
-__pycache__/

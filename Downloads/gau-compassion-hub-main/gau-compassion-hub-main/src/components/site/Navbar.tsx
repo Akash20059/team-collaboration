@@ -1,8 +1,10 @@
 import logo from "@/assets/logo.png";
 import { useEffect, useState } from "react";
-import { Menu, X, ShoppingCart } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Menu, X, ShoppingCart, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/hooks/useAuth";
 
 const links = [
   { id: "home", label: "Home" },
@@ -18,6 +20,7 @@ export const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { count, setOpen: setCartOpen } = useCart();
+  const { isAdmin } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -55,6 +58,13 @@ export const Navbar = () => {
           <Button onClick={() => go("donate")} variant="hero" size="sm" className="ml-2">
             Donate 🙏
           </Button>
+          {isAdmin && (
+            <Link to="/admin" className="ml-1">
+              <Button variant="outline" size="sm" className="gap-1">
+                <LayoutDashboard className="h-4 w-4" /> Admin
+              </Button>
+            </Link>
+          )}
         </nav>
 
         <div className="flex items-center gap-2">
@@ -87,6 +97,13 @@ export const Navbar = () => {
             <Button onClick={() => go("donate")} variant="hero" className="mt-3">
               Donate Now 🙏
             </Button>
+            {isAdmin && (
+              <Link to="/admin" onClick={() => setOpen(false)}>
+                <Button variant="outline" className="mt-2 w-full gap-1">
+                  <LayoutDashboard className="h-4 w-4" /> Admin Panel
+                </Button>
+              </Link>
+            )}
           </nav>
         </div>
       )}

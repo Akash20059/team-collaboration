@@ -8,10 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Loader2, MessageCircle, ExternalLink } from "lucide-react";
+import { Loader2, MessageCircle, ExternalLink, Minus, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { formatINR, SITE_CONFIG } from "@/lib/config";
+import { formatINR, computeDelivery } from "@/lib/config";
 
 interface Order {
   id: string;
@@ -53,6 +53,7 @@ const AdminOrders = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Order | null>(null);
   const [edits, setEdits] = useState<Partial<Order>>({});
+  const [editItems, setEditItems] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
@@ -63,12 +64,28 @@ const AdminOrders = () => {
   };
   useEffect(() => { load(); }, []);
 
-  const openEdit = (o: Order) => { setEditing(o); setEdits({}); };
+  const openEdit = (o: Order) => { setEditing(o); setEdits({}); setEditItems(o.items || []); };
+
+  const updateItemQty = (idx: number, qty: number) => {
+    if (qty < 1) return;
+    setEditItems((prev) => prev.map((item, i) => i === idx ? { ...item, quantity: qty } : item));
+  };
+  const removeItem = (idx: number) => setEditItems((prev) => prev.filter((_, i) => i !== idx));
+
+  const calcSubtotal = editItems.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0);
+  const calcDelivery = editing ? computeDelivery(calcSubtotal) : 0;
+  const calcTotal = calcSubtotal + calcDelivery;
 
   const onSave = async () => {
     if (!editing) return;
     setBusy(true);
-    const { error } = await supabase.from("orders").update(edits as any).eq("id", editing.id);
+    const { error } = await supabase.from("orders").update({
+      ...edits,
+      items: editItems,
+      subtotal: calcSubtotal,
+      delivery_charge: calcDelivery,
+      total_amount: calcTotal,
+    } as any).eq("id", editing.id);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
     toast.success("✅ Order updated");
@@ -148,14 +165,42 @@ const AdminOrders = () => {
 
                 <Card className="p-3">
                   <p className="font-medium mb-2">Items</p>
-                  {(view.items || []).map((i: any, idx: number) => (
-                    <div key={idx} className="flex justify-between text-xs py-1">
-                      <span>{i.name} × {i.quantity}</span>
-                      <span>{formatINR(i.price * i.quantity)}</span>
+                  {editItems.map((i: any, idx: number) => (
+                    <div key={idx} className="flex items-center gap-2 text-xs py-1.5 border-b border-border/40 last:border-0">
+                      <span className="flex-1 truncate">{i.name}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => updateItemQty(idx, i.quantity - 1)}
+                          disabled={i.quantity <= 1}
+                          className="h-5 w-5 rounded border border-border flex items-center justify-center hover:bg-muted disabled:opacity-40"
+                        ><Minus className="h-3 w-3" /></button>
+                        <span className="w-5 text-center font-medium">{i.quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => updateItemQty(idx, i.quantity + 1)}
+                          className="h-5 w-5 rounded border border-border flex items-center justify-center hover:bg-muted"
+                        ><Plus className="h-3 w-3" /></button>
+                      </div>
+                      <span className="w-16 text-right shrink-0">{formatINR(Number(i.price) * Number(i.quantity))}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeItem(idx)}
+                        className="text-destructive hover:text-destructive/80"
+                      ><Trash2 className="h-3 w-3" /></button>
                     </div>
                   ))}
-                  <div className="border-t border-border mt-2 pt-2 flex justify-between font-bold">
-                    <span>Total</span><span>{formatINR(Number(view.total_amount))}</span>
+                  {editItems.length === 0 && <p className="text-xs text-muted-foreground py-2">No items</p>}
+                  <div className="mt-2 pt-2 space-y-1 text-xs border-t border-border">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Subtotal</span><span>{formatINR(calcSubtotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Delivery</span><span>{calcDelivery === 0 ? "Free" : formatINR(calcDelivery)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-sm">
+                      <span>Total</span><span>{formatINR(calcTotal)}</span>
+                    </div>
                   </div>
                   {view.payment_reference && <p className="text-xs text-muted-foreground mt-2">UTR: {view.payment_reference}</p>}
                 </Card>

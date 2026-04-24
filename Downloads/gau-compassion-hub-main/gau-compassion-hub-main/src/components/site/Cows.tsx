@@ -26,14 +26,24 @@ export const Cows = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      // If still loading after 3 seconds, show empty state
+      if (loading) {
+        setLoading(false);
+      }
+    }, 3000);
+
     supabase
       .from("cows")
       .select("*")
       .order("cow_number", { ascending: true })
       .then(({ data }) => {
+        clearTimeout(timer);
         if (data) setCows(data as Cow[]);
         setLoading(false);
       });
+
+    return () => clearTimeout(timer);
   }, []);
 
   const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });

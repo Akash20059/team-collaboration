@@ -131,12 +131,21 @@ export const Products = () => {
   const { add, setOpen } = useCart();
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      // If still loading after 3 seconds, show fallback products
+      if (loading) {
+        setProducts(MOCK_PRODUCTS);
+        setLoading(false);
+      }
+    }, 3000);
+
     supabase
       .from("products")
       .select("id, name, description, price, mrp, quantity_available, stock_status, image_url")
       .order("display_order", { ascending: true })
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
+        clearTimeout(timer);
         if (!error && data && data.length > 0) {
           setProducts(data as Product[]);
         } else {
@@ -145,6 +154,8 @@ export const Products = () => {
         }
         setLoading(false);
       });
+
+    return () => clearTimeout(timer);
   }, []);
 
   const onAdd = (p: Product) => {

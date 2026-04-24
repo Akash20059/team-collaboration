@@ -50,15 +50,19 @@ export const Cows = () => {
         {cows.length === 0 ? (
           <div className="text-center text-muted-foreground py-12">No cows yet. Check back soon 🙏</div>
         ) : (
-          /* Cow Cards */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          /* Mobile: horizontal snap-scroll slider | Desktop: 3-col grid */
+          <div className="
+            flex overflow-x-auto snap-x snap-mandatory gap-5 pb-4 -mx-4 px-4
+            scrollbar-none
+            lg:grid lg:grid-cols-3 lg:gap-8 lg:overflow-visible lg:mx-0 lg:px-0 lg:pb-0
+          ">
             {cows.map((c, i) => {
               const status = STATUS_LABEL[c.health_status] || STATUS_LABEL.healthy;
               const badgeColor = BADGE_COLORS[i % BADGE_COLORS.length];
               return (
                 <div
                   key={c.id}
-                  className="group bg-card border border-border/60 rounded-3xl overflow-hidden shadow-soft hover:shadow-warm hover:-translate-y-2 transition-all duration-300 flex flex-col"
+                  className="group bg-card border border-border/60 rounded-3xl overflow-hidden shadow-soft hover:shadow-warm hover:-translate-y-2 transition-all duration-300 flex flex-col snap-center shrink-0 w-[80vw] lg:w-auto"
                 >
                   {/* Photo */}
                   <div className="relative aspect-[4/3] overflow-hidden">
@@ -163,15 +167,7 @@ export const Cows = () => {
           </div>
         )}
 
-        {/* Bottom CTA */}
-        <div className="mt-14 text-center">
-          <p className="text-muted-foreground mb-4">
-            More cows will be added as our Gaushala grows 🙏
-          </p>
-          <Button onClick={() => go("donate")} variant="outline" size="lg">
-            Support Our Herd
-          </Button>
-        </div>
+
       </div>
     </section>
   );

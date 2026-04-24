@@ -1,209 +1,221 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Loader2, MessageCircle, ExternalLink } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Package, Truck, Clock, CheckCircle2, Search, Calendar } from "lucide-react";
+import { getCustomerOrders, markOrderDispatched, updateOrderTracking, type CustomerOrder } from "@/lib/adminStore";
 import { toast } from "sonner";
-import { formatINR, SITE_CONFIG } from "@/lib/config";
-
-interface Order {
-  id: string;
-  order_id: string;
-  customer_name: string;
-  customer_mobile: string;
-  city: string;
-  state: string;
-  pincode: string;
-  address_line1: string;
-  address_line2: string | null;
-  items: any[];
-  subtotal: number;
-  delivery_charge: number;
-  total_amount: number;
-  payment_method: string;
-  payment_status: "pending" | "verified" | "failed";
-  payment_reference: string | null;
-  order_status: string;
-  courier_partner: string | null;
-  awb_number: string | null;
-  tracking_url: string | null;
-  expected_delivery: string | null;
-  internal_notes: string | null;
-  created_at: string;
-}
-
-const ORDER_STATUSES = [
-  "order_placed", "payment_verified", "packing", "shipped", "out_for_delivery", "delivered", "cancelled",
-];
-
-const STATUS_LABEL: Record<string, string> = {
-  order_placed: "Order Placed", payment_verified: "Payment Verified", packing: "Packing",
-  shipped: "Shipped", out_for_delivery: "Out for Delivery", delivered: "Delivered", cancelled: "Cancelled",
-};
+import { formatINR } from "@/lib/config";
 
 const AdminOrders = () => {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<Order | null>(null);
-  const [edits, setEdits] = useState<Partial<Order>>({});
-  const [busy, setBusy] = useState(false);
+  const [orders, setOrders] = useState<CustomerOrder[]>([]);
+  const [filter, setFilter] = useState<"all" | "pending" | "dispatched">("all");
+  const [search, setSearch] = useState("");
+  const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({});
 
-  const load = async () => {
-    setLoading(true);
-    const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
-    setOrders((data as Order[]) || []);
-    setLoading(false);
-  };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    setOrders(getCustomerOrders());
+  }, []);
 
-  const openEdit = (o: Order) => { setEditing(o); setEdits({}); };
-
-  const onSave = async () => {
-    if (!editing) return;
-    setBusy(true);
-    const { error } = await supabase.from("orders").update(edits as any).eq("id", editing.id);
-    setBusy(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("✅ Order updated");
-    setEditing(null);
-    load();
+  const handleDispatch = (orderId: string) => {
+    const tracking = trackingInputs[orderId];
+    if (!tracking) {
+      toast.error("Please enter a tracking number (e.g. India Post tracking ID)");
+      return;
+    }
+    markOrderDispatched(orderId, tracking);
+    setOrders(getCustomerOrders());
+    toast.success(`Order ${orderId} marked as dispatched!`);
   };
 
-  const notifyWhatsApp = (o: Order) => {
-    const courier = o.courier_partner || "Courier";
-    const awb = o.awb_number || "—";
-    const url = o.tracking_url || "";
-    const msg = `Dear ${o.customer_name}, your Shreemata Goumandira order ${o.order_id} has been shipped via ${courier} | Tracking No: ${awb}${url ? ` | Track here: ${url}` : ""} 🙏`;
-    window.open(`https://wa.me/91${o.customer_mobile}?text=${encodeURIComponent(msg)}`, "_blank");
+  const handleUpdateTracking = (orderId: string) => {
+    const tracking = trackingInputs[orderId];
+    if (!tracking) return;
+    updateOrderTracking(orderId, tracking);
+    setOrders(getCustomerOrders());
+    toast.success("Tracking number updated");
   };
 
-  const paymentBadge = (s: string) => {
-    if (s === "verified") return <Badge className="bg-green-600 text-white">Verified</Badge>;
-    if (s === "failed") return <Badge variant="destructive">Failed</Badge>;
-    return <Badge variant="secondary">Pending</Badge>;
-  };
+  // Stats
+  const total = orders.length;
+  const pending = orders.filter((o) => o.status === "pending").length;
+  const dispatched = orders.filter((o) => o.status === "dispatched").length;
 
-  const view = editing ? { ...editing, ...edits } : null;
+  // Filter & Search
+  const filteredOrders = orders.filter((o) => {
+    const matchesFilter = filter === "all" || o.status === filter;
+    const s = search.toLowerCase();
+    const matchesSearch =
+      o.order_id.toLowerCase().includes(s) ||
+      o.customer_name.toLowerCase().includes(s) ||
+      o.mobile.includes(s) ||
+      o.city.toLowerCase().includes(s);
+    return matchesFilter && matchesSearch;
+  });
 
   return (
-    <AdminLayout title="Orders">
-      <div className="mb-4 text-sm text-muted-foreground">{orders.length} orders</div>
-
-      {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" /></div>
-      ) : (
-        <Card className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left">
-              <tr>
-                <th className="p-3">Order ID</th>
-                <th className="p-3">Customer</th>
-                <th className="p-3">Items</th>
-                <th className="p-3">Total</th>
-                <th className="p-3">Payment</th>
-                <th className="p-3">Status</th>
-                <th className="p-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((o) => (
-                <tr key={o.id} className="border-t border-border hover:bg-muted/20">
-                  <td className="p-3 font-mono text-xs">{o.order_id}<div className="text-muted-foreground">{new Date(o.created_at).toLocaleDateString("en-IN")}</div></td>
-                  <td className="p-3">{o.customer_name}<div className="text-xs text-muted-foreground">📱 {o.customer_mobile}</div></td>
-                  <td className="p-3 text-xs">{(o.items || []).length} item(s)</td>
-                  <td className="p-3 font-bold">{formatINR(Number(o.total_amount))}</td>
-                  <td className="p-3">{paymentBadge(o.payment_status)}<div className="text-[10px] text-muted-foreground uppercase mt-1">{o.payment_method}</div></td>
-                  <td className="p-3 text-xs">{STATUS_LABEL[o.order_status]}</td>
-                  <td className="p-3 text-right">
-                    <Button size="sm" variant="outline" onClick={() => openEdit(o)}>Manage</Button>
-                  </td>
-                </tr>
-              ))}
-              {orders.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No orders yet</td></tr>}
-            </tbody>
-          </table>
+    <AdminLayout title="Customer Orders">
+      {/* Stats row */}
+      <div className="grid gap-4 sm:grid-cols-3 mb-6">
+        <Card className="p-4 flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <Package className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground font-medium">Total Orders</p>
+            <p className="text-2xl font-bold font-display text-secondary">{total}</p>
+          </div>
         </Card>
-      )}
+        <Card className="p-4 flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+            <Clock className="h-6 w-6 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground font-medium">Pending</p>
+            <p className="text-2xl font-bold font-display text-secondary">{pending}</p>
+          </div>
+        </Card>
+        <Card className="p-4 flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+            <Truck className="h-6 w-6 text-green-600" />
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground font-medium">Dispatched</p>
+            <p className="text-2xl font-bold font-display text-secondary">{dispatched}</p>
+          </div>
+        </Card>
+      </div>
 
-      <Sheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-          {view && (
-            <>
-              <SheetHeader>
-                <SheetTitle className="font-mono">{view.order_id}</SheetTitle>
-              </SheetHeader>
-              <div className="mt-4 space-y-4 text-sm">
-                <Card className="p-3 bg-muted/30">
-                  <p className="font-medium">{view.customer_name}</p>
-                  <p className="text-xs text-muted-foreground">📱 {view.customer_mobile}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{view.address_line1}{view.address_line2 && `, ${view.address_line2}`}, {view.city}, {view.state} - {view.pincode}</p>
-                </Card>
+      {/* Controls */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+        <Tabs value={filter} onValueChange={(v) => setFilter(v as any)} className="w-full sm:w-auto">
+          <TabsList>
+            <TabsTrigger value="all">All Orders</TabsTrigger>
+            <TabsTrigger value="pending">Pending</TabsTrigger>
+            <TabsTrigger value="dispatched">Dispatched</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search name, phone, order ID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
 
-                <Card className="p-3">
-                  <p className="font-medium mb-2">Items</p>
-                  {(view.items || []).map((i: any, idx: number) => (
-                    <div key={idx} className="flex justify-between text-xs py-1">
-                      <span>{i.name} × {i.quantity}</span>
-                      <span>{formatINR(i.price * i.quantity)}</span>
-                    </div>
-                  ))}
-                  <div className="border-t border-border mt-2 pt-2 flex justify-between font-bold">
-                    <span>Total</span><span>{formatINR(Number(view.total_amount))}</span>
+      {/* Orders List */}
+      <div className="space-y-4">
+        {filteredOrders.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-xl border border-border border-dashed">
+            <Package className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-muted-foreground">No orders found.</p>
+          </div>
+        ) : (
+          filteredOrders.map((o) => (
+            <Card key={o.id} className="overflow-hidden">
+              <div className="bg-muted/30 p-4 border-b border-border flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-primary/10 text-primary font-mono text-sm px-2 py-1 rounded-md font-bold">
+                    #{o.order_id}
                   </div>
-                  {view.payment_reference && <p className="text-xs text-muted-foreground mt-2">UTR: {view.payment_reference}</p>}
-                </Card>
-
-                <div>
-                  <Label>Payment Status</Label>
-                  <Select value={view.payment_status} onValueChange={(v: any) => setEdits({ ...edits, payment_status: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="verified">Verified</SelectItem>
-                      <SelectItem value="failed">Failed</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    {new Date(o.placed_at).toLocaleString("en-IN", {
+                      day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                    })}
+                  </div>
                 </div>
-
-                <div>
-                  <Label>Order Status</Label>
-                  <Select value={view.order_status} onValueChange={(v: any) => setEdits({ ...edits, order_status: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {ORDER_STATUSES.map((s) => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div><Label>Courier Partner</Label><Input value={view.courier_partner || ""} onChange={(e) => setEdits({ ...edits, courier_partner: e.target.value })} placeholder="Delhivery / DTDC / India Post" maxLength={50} /></div>
-                <div><Label>AWB / Tracking Number</Label><Input value={view.awb_number || ""} onChange={(e) => setEdits({ ...edits, awb_number: e.target.value })} maxLength={50} /></div>
-                <div><Label>Tracking URL</Label><Input type="url" value={view.tracking_url || ""} onChange={(e) => setEdits({ ...edits, tracking_url: e.target.value })} placeholder="https://..." /></div>
-                <div><Label>Expected Delivery</Label><Input type="date" value={view.expected_delivery || ""} onChange={(e) => setEdits({ ...edits, expected_delivery: e.target.value })} /></div>
-                <div><Label>Internal Notes</Label><Textarea rows={3} value={view.internal_notes || ""} onChange={(e) => setEdits({ ...edits, internal_notes: e.target.value })} maxLength={500} /></div>
-
-                <div className="flex flex-col gap-2">
-                  <Button variant="hero" onClick={onSave} disabled={busy}>
-                    {busy && <Loader2 className="animate-spin" />} Save Changes
-                  </Button>
-                  <Button variant="outline" onClick={() => notifyWhatsApp(view)}>
-                    <MessageCircle className="h-4 w-4" /> Notify Customer on WhatsApp
-                  </Button>
-                  <a href={`/track-order?id=${view.order_id}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1 justify-center">
-                    <ExternalLink className="h-3 w-3" /> View customer tracking page
-                  </a>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="font-bold text-secondary text-lg leading-tight">{formatINR(o.total_amount)}</p>
+                    {o.delivery_charge > 0 && <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Incl. delivery</p>}
+                  </div>
+                  {o.status === "pending" ? (
+                    <span className="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> PENDING
+                    </span>
+                  ) : (
+                    <span className="bg-green-100 text-green-800 text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" /> DISPATCHED
+                    </span>
+                  )}
                 </div>
               </div>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
+
+              <div className="p-4 grid md:grid-cols-2 gap-6">
+                {/* Customer Details */}
+                <div>
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Customer & Delivery</h4>
+                  <p className="font-semibold text-secondary">{o.customer_name}</p>
+                  <p className="text-sm text-muted-foreground mb-2">📞 {o.mobile}</p>
+                  <div className="text-sm bg-muted/30 p-3 rounded-lg text-secondary-foreground/80 mt-2">
+                    <p>{o.address_line1}</p>
+                    <p>{o.city}, {o.state} — <span className="font-mono font-medium">{o.pincode}</span></p>
+                  </div>
+                </div>
+
+                {/* Items & Actions */}
+                <div className="flex flex-col justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Items Ordered</h4>
+                    <ul className="space-y-2 mb-4">
+                      {o.items.map((item, idx) => (
+                        <li key={idx} className="flex items-center justify-between text-sm">
+                          <span className="text-secondary"><span className="text-muted-foreground mr-1">{item.qty}x</span> {item.name}</span>
+                          <span className="text-muted-foreground">{formatINR(item.price * item.qty)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="pt-4 border-t border-border mt-auto">
+                    {o.status === "pending" ? (
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Tracking Number (e.g. India Post)"
+                          value={trackingInputs[o.order_id] || ""}
+                          onChange={(e) => setTrackingInputs({ ...trackingInputs, [o.order_id]: e.target.value })}
+                          className="text-sm"
+                        />
+                        <Button onClick={() => handleDispatch(o.order_id)} className="shrink-0 bg-green-600 hover:bg-green-700">
+                          Mark Dispatched
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs text-green-800 font-medium flex items-center gap-1.5">
+                            <Truck className="h-3.5 w-3.5" /> Dispatched via Indian Post
+                          </p>
+                          <p className="text-[10px] text-green-600">
+                            {o.dispatched_at ? new Date(o.dispatched_at).toLocaleDateString() : ""}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Tracking Number"
+                            value={trackingInputs[o.order_id] ?? o.tracking_number ?? ""}
+                            onChange={(e) => setTrackingInputs({ ...trackingInputs, [o.order_id]: e.target.value })}
+                            className="h-8 text-xs bg-white border-green-200 focus-visible:ring-green-500"
+                          />
+                          <Button size="sm" variant="outline" className="h-8 border-green-200 text-green-700 hover:bg-green-100" onClick={() => handleUpdateTracking(o.order_id)}>
+                            Update
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
     </AdminLayout>
   );
 };

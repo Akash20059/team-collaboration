@@ -3,10 +3,10 @@ import { CalendarDays } from "lucide-react";
 import { getBlogPosts, type BlogPost } from "@/lib/adminStore";
 
 const CATEGORY_LABELS: Record<string, string> = {
-  new_born_calf: "New Born Calf 🐮",
-  program: "Program 📅",
-  function: "Function 🎉",
-  general_update: "General Update 📢",
+  new_born_calf: "New Born Calf",
+  program: "Program",
+  function: "Function",
+  general_update: "General Update",
 };
 
 export const Blog = () => {
@@ -25,7 +25,7 @@ export const Blog = () => {
         <div className="text-center mb-12">
           <p className="font-sanskrit text-primary text-lg">समाचार</p>
           <h2 className="font-display text-3xl md:text-5xl font-bold text-secondary">Latest from Goumandira</h2>
-          <div className="divider-lotus"><span className="text-primary text-xl">📰</span></div>
+          <div className="divider-lotus"><span className="text-primary/40 text-xl">—</span></div>
         </div>
 
         {loading ? (

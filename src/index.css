@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Sanskrit&family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -93,7 +94,7 @@
     @apply container mx-auto px-4 sm:px-6 lg:px-8;
   }
   .section-pad {
-    @apply py-16 md:py-24;
+    @apply py-10 md:py-16;
   }
   .divider-lotus {
     @apply flex items-center justify-center gap-3 my-6;
@@ -105,5 +106,12 @@
   }
   .ornate-border {
     background-image: repeating-linear-gradient(45deg, hsl(var(--primary) / 0.15) 0 6px, transparent 6px 12px);
+  }
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
   }
 }

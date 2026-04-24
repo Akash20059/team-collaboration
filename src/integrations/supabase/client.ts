@@ -5,8 +5,13 @@ import type { Database } from './types';
 const FALLBACK_SUPABASE_URL = "https://dsmdfwrhvzxdvysepsvm.supabase.co";
 const FALLBACK_SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbWRmd3Jodnp4ZHZ5c2Vwc3ZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5MjMzODUsImV4cCI6MjA5MjQ5OTM4NX0.YA8To7p7QGJB6RqrgXelUkv9MLsW1hkAAE5FKJL4iWo";
 
-const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL ?? FALLBACK_SUPABASE_URL).trim();
-const SUPABASE_PUBLISHABLE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? FALLBACK_SUPABASE_PUBLISHABLE_KEY).trim();
+const cleanEnv = (val: string | undefined, fallback: string) => {
+  if (!val) return fallback;
+  return val.trim().replace(/^["']|["']$/g, '');
+};
+
+const SUPABASE_URL = cleanEnv(import.meta.env.VITE_SUPABASE_URL, FALLBACK_SUPABASE_URL);
+const SUPABASE_PUBLISHABLE_KEY = cleanEnv(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, FALLBACK_SUPABASE_PUBLISHABLE_KEY);
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

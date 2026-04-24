@@ -31,7 +31,7 @@ export const Hero = () => {
           <Button onClick={() => go("donate")} variant="hero" size="lg" className="text-base">
             Donate Now 🙏
           </Button>
-          <Button onClick={() => go("cows")} variant="outline" size="lg" className="bg-background/20 border-primary-foreground/60 text-primary-foreground hover:bg-background hover:text-foreground backdrop-blur">
+          <Button onClick={() => go("cows")} variant="outline" size="lg" className="bg-white border-white text-secondary hover:bg-white/90 hover:text-secondary font-bold">
             Meet Our Cows
           </Button>
         </div>

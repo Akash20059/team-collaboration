@@ -66,6 +66,26 @@ export interface BlogPost {
   created_at: string;
 }
 
+export type OrderStatus = "pending" | "dispatched";
+
+export interface CustomerOrder {
+  id: string;
+  order_id: string;
+  customer_name: string;
+  mobile: string;
+  address_line1: string;
+  city: string;
+  state: string;
+  pincode: string;
+  items: { name: string; qty: number; price: number }[];
+  total_amount: number;
+  delivery_charge: number;
+  status: OrderStatus;
+  tracking_number?: string;
+  placed_at: string;
+  dispatched_at?: string;
+}
+
 // ─── Storage Keys ──────────────────────────────────────────────────────────
 
 const KEYS = {
@@ -73,6 +93,7 @@ const KEYS = {
   cows: "admin_cows",
   blog: "admin_blog",
   donors: "admin_donors",
+  orders: "admin_customer_orders",
   seeded: "admin_seeded",
 } as const;
 
@@ -257,6 +278,23 @@ export function downloadExport(): void {
 // ─── Seed Data (runs once on first visit) ──────────────────────────────────
 
 export function seedIfEmpty(): void {
+  // Migration: patch existing cows with parent names if missing
+  const existingCows = getCows();
+  const parentMap: Record<string, { father_name: string; mother_name: string }> = {
+    "Gowri":     { father_name: "Nandi",  mother_name: "Surabhi" },
+    "Kamadhenu": { father_name: "Basava", mother_name: "Gowri" },
+    "Nandini":   { father_name: "Basava", mother_name: "Kamadhenu" },
+  };
+  if (existingCows.length > 0) {
+    const patched = existingCows.map((c) => {
+      if (!c.father_name && !c.mother_name && parentMap[c.name]) {
+        return { ...c, ...parentMap[c.name] };
+      }
+      return c;
+    });
+    setList(KEYS.cows, patched);
+  }
+
   if (localStorage.getItem(KEYS.seeded)) return;
 
   // Seed cows
@@ -265,18 +303,21 @@ export function seedIfEmpty(): void {
       {
         id: uuid(), cow_number: 1, name: "Gowri", age: "4 years", weight_kg: 210,
         breed: "Malenadu Gidda", milk_yield_litres: 3.5, health_status: "healthy",
+        father_name: "Nandi", mother_name: "Surabhi",
         is_adopted: false, photo_url: cow1, notes: "Gentle and calm, loves morning grazing in the forest meadow.",
         created_at: new Date().toISOString(),
       },
       {
         id: uuid(), cow_number: 2, name: "Kamadhenu", age: "6 years", weight_kg: 245,
         breed: "Malenadu Gidda", milk_yield_litres: 4.2, health_status: "pregnant",
+        father_name: "Basava", mother_name: "Gowri",
         is_adopted: true, photo_url: cow2, notes: "Expecting her second calf. She enjoys the evening temple bells.",
         created_at: new Date().toISOString(),
       },
       {
         id: uuid(), cow_number: 3, name: "Nandini", age: "3 years", weight_kg: 185,
         breed: "Malenadu Gidda", milk_yield_litres: 2.8, health_status: "healthy",
+        father_name: "Basava", mother_name: "Kamadhenu",
         is_adopted: false, photo_url: cow3, notes: "Young and spirited — the youngest of our sacred herd.",
         created_at: new Date().toISOString(),
       },
@@ -333,3 +374,35 @@ export function seedIfEmpty(): void {
 
   localStorage.setItem(KEYS.seeded, "true");
 }
+
+// ─── Customer Orders CRUD ──────────────────────────────────────────────────
+
+export function getCustomerOrders(): CustomerOrder[] {
+  return getList<CustomerOrder>(KEYS.orders).sort(
+    (a, b) => new Date(b.placed_at).getTime() - new Date(a.placed_at).getTime()
+  );
+}
+
+export function addCustomerOrder(order: CustomerOrder): void {
+  const existing = getList<CustomerOrder>(KEYS.orders);
+  setList(KEYS.orders, [order, ...existing]);
+}
+
+export function markOrderDispatched(orderId: string, trackingNumber?: string): void {
+  const orders = getList<CustomerOrder>(KEYS.orders);
+  const updated = orders.map((o) =>
+    o.order_id === orderId
+      ? { ...o, status: "dispatched" as OrderStatus, dispatched_at: new Date().toISOString(), tracking_number: trackingNumber || o.tracking_number }
+      : o
+  );
+  setList(KEYS.orders, updated);
+}
+
+export function updateOrderTracking(orderId: string, trackingNumber: string): void {
+  const orders = getList<CustomerOrder>(KEYS.orders);
+  const updated = orders.map((o) =>
+    o.order_id === orderId ? { ...o, tracking_number: trackingNumber } : o
+  );
+  setList(KEYS.orders, updated);
+}
+

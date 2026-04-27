@@ -1,5 +1,6 @@
 // ─── Shared API helper for the Express backend ───────────────────────────────
-const BASE = "http://localhost:3001/api";
+// In production this points to the Render service URL; locally it falls back to localhost:3001
+const BASE = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3001") + "/api";
 
 async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {

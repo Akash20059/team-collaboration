@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { CalendarDays } from "lucide-react";
-import { getBlogPosts, type BlogPost } from "@/lib/adminStore";
+import { api } from "@/lib/api";
+
+type BlogPost = any; // Quick type for api response
 
 const CATEGORY_LABELS: Record<string, string> = {
   new_born_calf: "New Born Calf",
@@ -14,9 +16,17 @@ export const Blog = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const data = getBlogPosts().slice(0, 6); // Show latest 6
-    setPosts(data);
-    setLoading(false);
+    const loadPosts = async () => {
+      try {
+        const data = await api.getBlogPosts();
+        setPosts(data.slice(0, 6)); // Show latest 6
+      } catch (e) {
+        console.error("Failed to load posts", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadPosts();
   }, []);
 
   return (

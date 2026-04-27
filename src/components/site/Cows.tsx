@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Heart, Droplets, Weight, Calendar, Leaf, Stethoscope } from "lucide-react";
-import { getCows, type Cow } from "@/lib/adminStore";
+import { api } from "@/lib/api";
+
+type Cow = any; // Quick type for api response
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   healthy: { label: "✅ Healthy", color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
@@ -17,8 +19,17 @@ export const Cows = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setCows(getCows());
-    setLoading(false);
+    const loadCows = async () => {
+      try {
+        const data = await api.getCows();
+        setCows(data);
+      } catch (e) {
+        console.error("Failed to load cows", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadCows();
   }, []);
 
   const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });

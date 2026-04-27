@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getProducts } from "@/lib/adminStore";
+import { api } from "@/lib/api";
 import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
@@ -23,10 +23,17 @@ export const Products = () => {
   const { add, setOpen } = useCart();
 
   useEffect(() => {
-    // Read from localStorage
-    const data = getProducts();
-    setProducts(data);
-    setLoading(false);
+    const loadProducts = async () => {
+      try {
+        const data = await api.getProducts();
+        setProducts(data);
+      } catch (e: any) {
+        console.error("Failed to load products", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProducts();
   }, []);
 
   const onAdd = (p: Product) => {

@@ -20,10 +20,7 @@ export const SITE_CONFIG = {
 };
 
 export const computeDelivery = (subtotal: number) => {
-  const { free_above, mid_threshold, low_charge, mid_charge } = SITE_CONFIG.delivery;
-  if (subtotal >= free_above) return 0;
-  if (subtotal >= mid_threshold) return mid_charge;
-  return low_charge;
+  return 0; // Testing: Free delivery
 };
 
 export const formatINR = (n: number) =>

@@ -10,19 +10,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ImageUpload } from "@/components/admin/ImageUpload";
-import { Pencil, Trash2, Plus } from "lucide-react";
-import { getCows, saveCow, deleteCow, type Cow, type HealthStatus } from "@/lib/adminStore";
+import { Pencil, Trash2, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 
-const empty: {
-  cow_number: number; name: string; age: string; weight_kg: number; breed: string;
-  father_name: string; mother_name: string;
-  milk_yield_litres: number; health_status: HealthStatus; is_adopted: boolean;
-  photo_url: string | null; notes: string;
-} = {
+type HealthStatus = "healthy" | "under_treatment" | "pregnant" | "new_born";
+type Cow = {
+  id: string; cow_number: number; name: string; age: string | null; weight_kg: number | null;
+  breed: string | null; milk_yield_litres: number | null; health_status: HealthStatus;
+  is_adopted: boolean; photo_url: string | null; notes: string | null;
+};
+
+const empty = {
   cow_number: 0, name: "", age: "", weight_kg: 0, breed: "Malenadu Gidda",
   father_name: "", mother_name: "",
-  milk_yield_litres: 0, health_status: "healthy", is_adopted: false, photo_url: null, notes: "",
+  milk_yield_litres: 0, health_status: "healthy" as HealthStatus, is_adopted: false, photo_url: null as string | null, notes: "",
 };
 
 const AdminCows = () => {
@@ -31,15 +33,28 @@ const AdminCows = () => {
   const [editing, setEditing] = useState<Cow | null>(null);
   const [form, setForm] = useState(empty);
   const [del, setDel] = useState<Cow | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const load = () => { setItems(getCows()); };
+  const load = async () => {
+    try {
+      const data = await api.getCows();
+      setItems(data);
+    } catch (e: any) {
+      toast.error("Failed to load cows: " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => { load(); }, []);
 
   const openAdd = () => {
     const next = items.length ? Math.max(...items.map((c) => c.cow_number)) + 1 : 1;
     setEditing(null); setForm({ ...empty, cow_number: next }); setOpen(true);
   };
-  const openEdit = (c: Cow) => {
+
+  const openEdit = (c: any) => {
     setEditing(c);
     setForm({
       cow_number: c.cow_number, name: c.name, age: c.age || "",
@@ -53,32 +68,45 @@ const AdminCows = () => {
     setOpen(true);
   };
 
-  const onSave = (e: React.FormEvent) => {
+  const onSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || form.cow_number <= 0) { toast.error("Number and name required"); return; }
-    saveCow({
-      ...(editing ? { id: editing.id } : {}),
-      cow_number: form.cow_number,
-      name: form.name.trim(),
-      father_name: form.father_name.trim() || null,
-      mother_name: form.mother_name.trim() || null,
-      age: form.age.trim(),
-      weight_kg: form.weight_kg > 0 ? form.weight_kg : 0,
-      breed: form.breed.trim() || "Malenadu Gidda",
-      milk_yield_litres: form.milk_yield_litres > 0 ? form.milk_yield_litres : 0,
-      health_status: form.health_status,
-      is_adopted: form.is_adopted,
-      photo_url: form.photo_url,
-      notes: form.notes.trim(),
-    });
-    toast.success(editing ? "✅ Cow updated successfully!" : "✅ Cow added successfully!");
-    setOpen(false); load();
+    setSaving(true);
+    try {
+      const payload = {
+        cow_number: form.cow_number, name: form.name.trim(),
+        father_name: (form as any).father_name?.trim() || null,
+        mother_name: (form as any).mother_name?.trim() || null,
+        age: form.age.trim() || null,
+        weight_kg: form.weight_kg > 0 ? form.weight_kg : null,
+        breed: form.breed.trim() || "Malenadu Gidda",
+        milk_yield_litres: form.milk_yield_litres > 0 ? form.milk_yield_litres : null,
+        health_status: form.health_status, is_adopted: form.is_adopted,
+        photo_url: form.photo_url, notes: form.notes.trim() || null,
+      };
+      if (editing) {
+        await api.updateCow(editing.id, payload);
+        toast.success("✅ Cow updated successfully!");
+      } else {
+        await api.createCow(payload);
+        toast.success("✅ Cow added successfully!");
+      }
+      setOpen(false); load();
+    } catch (e: any) {
+      toast.error("Failed to save: " + e.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const onDelete = () => {
+  const onDelete = async () => {
     if (!del) return;
-    deleteCow(del.id);
-    toast.success("Cow removed"); setDel(null); load();
+    try {
+      await api.deleteCow(del.id);
+      toast.success("Cow removed"); setDel(null); load();
+    } catch (e: any) {
+      toast.error("Failed to delete: " + e.message);
+    }
   };
 
   return (
@@ -88,26 +116,30 @@ const AdminCows = () => {
         <Button variant="hero" onClick={openAdd}><Plus className="h-4 w-4" /> Add Cow</Button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {items.map((c) => (
-          <Card key={c.id} className="overflow-hidden">
-            <div className="relative aspect-square bg-muted">
-              {c.photo_url && <img src={c.photo_url} alt={c.name} className="h-full w-full object-cover" />}
-              <span className="absolute top-2 left-2 h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">{c.cow_number}</span>
-              {c.is_adopted && <span className="absolute top-2 right-2 bg-accent text-accent-foreground text-[10px] px-2 py-0.5 rounded-full font-semibold">💛 Adopted</span>}
-            </div>
-            <div className="p-3">
-              <p className="font-display font-bold text-secondary truncate">{c.name}</p>
-              <p className="text-xs text-muted-foreground capitalize">{c.health_status.replace("_", " ")}</p>
-              <div className="flex gap-1 mt-2">
-                <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(c)}><Pencil className="h-3 w-3" /></Button>
-                <Button size="sm" variant="outline" onClick={() => setDel(c)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+      {loading ? (
+        <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {items.map((c) => (
+            <Card key={c.id} className="overflow-hidden">
+              <div className="relative aspect-square bg-muted">
+                {c.photo_url && <img src={c.photo_url} alt={c.name} className="h-full w-full object-cover" />}
+                <span className="absolute top-2 left-2 h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">{c.cow_number}</span>
+                {c.is_adopted && <span className="absolute top-2 right-2 bg-accent text-accent-foreground text-[10px] px-2 py-0.5 rounded-full font-semibold">💛 Adopted</span>}
               </div>
-            </div>
-          </Card>
-        ))}
-        {items.length === 0 && <p className="col-span-full text-center text-muted-foreground py-8">No cows added yet</p>}
-      </div>
+              <div className="p-3">
+                <p className="font-display font-bold text-secondary truncate">{c.name}</p>
+                <p className="text-xs text-muted-foreground capitalize">{c.health_status.replace("_", " ")}</p>
+                <div className="flex gap-1 mt-2">
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(c)}><Pencil className="h-3 w-3" /></Button>
+                  <Button size="sm" variant="outline" onClick={() => setDel(c)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                </div>
+              </div>
+            </Card>
+          ))}
+          {items.length === 0 && <p className="col-span-full text-center text-muted-foreground py-8">No cows added yet</p>}
+        </div>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -119,8 +151,8 @@ const AdminCows = () => {
               <div><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required maxLength={50} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Father Name</Label><Input value={form.father_name} onChange={(e) => setForm({ ...form, father_name: e.target.value })} maxLength={50} /></div>
-              <div><Label>Mother Name</Label><Input value={form.mother_name} onChange={(e) => setForm({ ...form, mother_name: e.target.value })} maxLength={50} /></div>
+              <div><Label>Father Name</Label><Input value={(form as any).father_name} onChange={(e) => setForm({ ...form, father_name: e.target.value } as any)} maxLength={50} /></div>
+              <div><Label>Mother Name</Label><Input value={(form as any).mother_name} onChange={(e) => setForm({ ...form, mother_name: e.target.value } as any)} maxLength={50} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Age</Label><Input value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} placeholder="e.g. 5 yrs" maxLength={20} /></div>
@@ -149,7 +181,7 @@ const AdminCows = () => {
             </label>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" variant="hero">Save</Button>
+              <Button type="submit" variant="hero" disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -159,7 +191,7 @@ const AdminCows = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to delete this?</AlertDialogTitle>
-            <AlertDialogDescription>"{del?.name}" will be permanently removed. This cannot be undone.</AlertDialogDescription>
+            <AlertDialogDescription>"{del?.name}" will be permanently removed.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>

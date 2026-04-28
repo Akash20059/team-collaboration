@@ -9,9 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ImageUpload } from "@/components/admin/ImageUpload";
-import { Pencil, Trash2, Plus } from "lucide-react";
-import { getBlogPosts, saveBlogPost, deleteBlogPost, type BlogPost, type BlogCategory } from "@/lib/adminStore";
+import { Pencil, Trash2, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
+
+type BlogCategory = "new_born_calf" | "program" | "function" | "general_update";
+type BlogPost = {
+  id: string; title: string; category: BlogCategory; post_date: string;
+  cover_image_url: string | null; content: string | null;
+};
 
 const CATS: Record<BlogCategory, string> = {
   new_born_calf: "New Born Calf 🐮",
@@ -20,13 +26,10 @@ const CATS: Record<BlogCategory, string> = {
   general_update: "General Update 📢",
 };
 
-const empty: {
-  title: string; category: BlogCategory; post_date: string;
-  cover_image_url: string | null; content: string;
-} = {
-  title: "", category: "general_update",
+const empty = {
+  title: "", category: "general_update" as BlogCategory,
   post_date: new Date().toISOString().slice(0, 10),
-  cover_image_url: null, content: "",
+  cover_image_url: null as string | null, content: "",
 };
 
 const AdminBlog = () => {
@@ -35,40 +38,58 @@ const AdminBlog = () => {
   const [editing, setEditing] = useState<BlogPost | null>(null);
   const [form, setForm] = useState(empty);
   const [del, setDel] = useState<BlogPost | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const load = () => { setItems(getBlogPosts()); };
+  const load = async () => {
+    try {
+      const data = await api.getBlogPosts();
+      setItems(data);
+    } catch (e: any) {
+      toast.error("Failed to load posts: " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => { load(); }, []);
 
   const openAdd = () => { setEditing(null); setForm(empty); setOpen(true); };
   const openEdit = (p: BlogPost) => {
     setEditing(p);
-    setForm({
-      title: p.title, category: p.category,
-      post_date: p.post_date, cover_image_url: p.cover_image_url,
-      content: p.content || "",
-    });
+    setForm({ title: p.title, category: p.category, post_date: p.post_date, cover_image_url: p.cover_image_url, content: p.content || "" });
     setOpen(true);
   };
 
-  const onSave = (e: React.FormEvent) => {
+  const onSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) { toast.error("Title required"); return; }
-    saveBlogPost({
-      ...(editing ? { id: editing.id } : {}),
-      title: form.title.trim(),
-      category: form.category,
-      post_date: form.post_date,
-      cover_image_url: form.cover_image_url,
-      content: form.content.trim(),
-    });
-    toast.success(editing ? "✅ Post updated successfully!" : "✅ Post added successfully!");
-    setOpen(false); load();
+    setSaving(true);
+    try {
+      const payload = { title: form.title.trim(), category: form.category, post_date: form.post_date, cover_image_url: form.cover_image_url, content: form.content.trim() };
+      if (editing) {
+        await api.updateBlogPost(editing.id, payload);
+        toast.success("✅ Post updated successfully!");
+      } else {
+        await api.createBlogPost(payload);
+        toast.success("✅ Post added successfully!");
+      }
+      setOpen(false); load();
+    } catch (e: any) {
+      toast.error("Failed to save: " + e.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const onDelete = () => {
+  const onDelete = async () => {
     if (!del) return;
-    deleteBlogPost(del.id);
-    toast.success("Post deleted"); setDel(null); load();
+    try {
+      await api.deleteBlogPost(del.id);
+      toast.success("Post deleted"); setDel(null); load();
+    } catch (e: any) {
+      toast.error("Failed to delete: " + e.message);
+    }
   };
 
   return (
@@ -79,32 +100,36 @@ const AdminBlog = () => {
       </div>
 
       <Card className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left">
-            <tr>
-              <th className="p-3">Cover</th>
-              <th className="p-3">Title</th>
-              <th className="p-3">Category</th>
-              <th className="p-3">Date</th>
-              <th className="p-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((p) => (
-              <tr key={p.id} className="border-t border-border">
-                <td className="p-3">{p.cover_image_url ? <img src={p.cover_image_url} alt="" className="h-12 w-16 object-cover rounded" /> : <div className="h-12 w-16 bg-muted rounded" />}</td>
-                <td className="p-3 font-medium max-w-xs truncate">{p.title}</td>
-                <td className="p-3 text-xs">{CATS[p.category]}</td>
-                <td className="p-3 text-xs text-muted-foreground">{new Date(p.post_date).toLocaleDateString("en-IN")}</td>
-                <td className="p-3 text-right">
-                  <Button size="sm" variant="ghost" onClick={() => openEdit(p)}><Pencil className="h-3 w-3" /></Button>
-                  <Button size="sm" variant="ghost" onClick={() => setDel(p)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
-                </td>
+        {loading ? (
+          <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-left">
+              <tr>
+                <th className="p-3">Cover</th>
+                <th className="p-3">Title</th>
+                <th className="p-3">Category</th>
+                <th className="p-3">Date</th>
+                <th className="p-3 text-right">Actions</th>
               </tr>
-            ))}
-            {items.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No posts yet</td></tr>}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {items.map((p) => (
+                <tr key={p.id} className="border-t border-border">
+                  <td className="p-3">{p.cover_image_url ? <img src={p.cover_image_url} alt="" className="h-12 w-16 object-cover rounded" /> : <div className="h-12 w-16 bg-muted rounded" />}</td>
+                  <td className="p-3 font-medium max-w-xs truncate">{p.title}</td>
+                  <td className="p-3 text-xs">{CATS[p.category]}</td>
+                  <td className="p-3 text-xs text-muted-foreground">{new Date(p.post_date).toLocaleDateString("en-IN")}</td>
+                  <td className="p-3 text-right">
+                    <Button size="sm" variant="ghost" onClick={() => openEdit(p)}><Pencil className="h-3 w-3" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => setDel(p)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                  </td>
+                </tr>
+              ))}
+              {items.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No posts yet</td></tr>}
+            </tbody>
+          </table>
+        )}
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -126,7 +151,7 @@ const AdminBlog = () => {
             <div><Label>Content</Label><Textarea rows={6} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} maxLength={2000} /></div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" variant="hero">Save</Button>
+              <Button type="submit" variant="hero" disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -136,7 +161,7 @@ const AdminBlog = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to delete this?</AlertDialogTitle>
-            <AlertDialogDescription>"{del?.title}" will be permanently removed. This cannot be undone.</AlertDialogDescription>
+            <AlertDialogDescription>"{del?.title}" will be permanently removed.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>

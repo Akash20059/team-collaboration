@@ -9,17 +9,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Plus, Repeat, Star } from "lucide-react";
-import { getDonors, saveDonor, deleteDonor, type Donor, type DonationType } from "@/lib/adminStore";
+import { Pencil, Trash2, Plus, Repeat, Star, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/config";
+import { api } from "@/lib/api";
+
+type DonationType = "one-time" | "monthly";
+type Donor = { id: string; name: string; type: DonationType; amount: number; donated_at: string; message: string | null; };
 
 const empty = {
-  name: "",
-  type: "one-time" as DonationType,
-  amount: 12000,
-  donated_at: new Date().toISOString().slice(0, 10),
-  message: "",
+  name: "", type: "one-time" as DonationType, amount: 12000,
+  donated_at: new Date().toISOString().slice(0, 10), message: "",
 };
 
 const AdminDonors = () => {
@@ -28,46 +28,63 @@ const AdminDonors = () => {
   const [editing, setEditing] = useState<Donor | null>(null);
   const [form, setForm] = useState(empty);
   const [del, setDel] = useState<Donor | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const load = () => setItems(getDonors());
+  const load = async () => {
+    try {
+      const data = await api.getDonors();
+      setItems(data);
+    } catch (e: any) {
+      toast.error("Failed to load donors: " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => { load(); }, []);
 
   const openAdd = () => { setEditing(null); setForm(empty); setOpen(true); };
   const openEdit = (d: Donor) => {
     setEditing(d);
-    setForm({
-      name: d.name,
-      type: d.type,
-      amount: d.amount,
-      donated_at: d.donated_at.slice(0, 10),
-      message: d.message || "",
-    });
+    setForm({ name: d.name, type: d.type, amount: d.amount, donated_at: d.donated_at.slice(0, 10), message: d.message || "" });
     setOpen(true);
   };
 
-  const onSave = (e: React.FormEvent) => {
+  const onSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) { toast.error("Name is required"); return; }
     if (form.amount <= 0) { toast.error("Amount must be greater than 0"); return; }
-    saveDonor({
-      ...(editing ? { id: editing.id } : {}),
-      name: form.name.trim(),
-      type: form.type,
-      amount: form.amount,
-      donated_at: new Date(form.donated_at).toISOString(),
-      message: form.message.trim() || undefined,
-    });
-    toast.success(editing ? "✅ Donor updated!" : "✅ Donor added!");
-    setOpen(false);
-    load();
+    setSaving(true);
+    try {
+      const payload = {
+        name: form.name.trim(), type: form.type, amount: form.amount,
+        donated_at: new Date(form.donated_at).toISOString(),
+        message: form.message.trim() || null,
+      };
+      if (editing) {
+        await api.updateDonor(editing.id, payload);
+        toast.success("✅ Donor updated!");
+      } else {
+        await api.createDonor(payload);
+        toast.success("✅ Donor added!");
+      }
+      setOpen(false); load();
+    } catch (e: any) {
+      toast.error("Failed to save: " + e.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const onDelete = () => {
+  const onDelete = async () => {
     if (!del) return;
-    deleteDonor(del.id);
-    toast.success("Donor removed");
-    setDel(null);
-    load();
+    try {
+      await api.deleteDonor(del.id);
+      toast.success("Donor removed"); setDel(null); load();
+    } catch (e: any) {
+      toast.error("Failed to delete: " + e.message);
+    }
   };
 
   return (
@@ -78,49 +95,52 @@ const AdminDonors = () => {
       </div>
 
       <Card className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left">
-            <tr>
-              <th className="p-3">Name</th>
-              <th className="p-3">Type</th>
-              <th className="p-3">Amount</th>
-              <th className="p-3">Date</th>
-              <th className="p-3">Message</th>
-              <th className="p-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((d) => (
-              <tr key={d.id} className="border-t border-border">
-                <td className="p-3 font-medium">{d.name}</td>
-                <td className="p-3">
-                  {d.type === "monthly"
-                    ? <Badge className="bg-primary/15 text-primary border-0 gap-1"><Repeat className="h-3 w-3" />Monthly</Badge>
-                    : <Badge variant="outline" className="gap-1"><Star className="h-3 w-3" />One-Time</Badge>}
-                </td>
-                <td className="p-3 font-bold text-primary">
-                  {formatINR(d.amount)}{d.type === "monthly" && <span className="text-xs text-muted-foreground">/mo</span>}
-                </td>
-                <td className="p-3 text-muted-foreground">
-                  {new Date(d.donated_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                </td>
-                <td className="p-3 max-w-[180px]">
-                  <p className="text-xs text-muted-foreground truncate">{d.message || "—"}</p>
-                </td>
-                <td className="p-3 text-right">
-                  <Button size="sm" variant="ghost" onClick={() => openEdit(d)}><Pencil className="h-3 w-3" /></Button>
-                  <Button size="sm" variant="ghost" onClick={() => setDel(d)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
-                </td>
+        {loading ? (
+          <div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-left">
+              <tr>
+                <th className="p-3">Name</th>
+                <th className="p-3">Type</th>
+                <th className="p-3">Amount</th>
+                <th className="p-3">Date</th>
+                <th className="p-3">Message</th>
+                <th className="p-3 text-right">Actions</th>
               </tr>
-            ))}
-            {items.length === 0 && (
-              <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No donors yet. Add the first one!</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {items.map((d) => (
+                <tr key={d.id} className="border-t border-border">
+                  <td className="p-3 font-medium">{d.name}</td>
+                  <td className="p-3">
+                    {d.type === "monthly"
+                      ? <Badge className="bg-primary/15 text-primary border-0 gap-1"><Repeat className="h-3 w-3" />Monthly</Badge>
+                      : <Badge variant="outline" className="gap-1"><Star className="h-3 w-3" />One-Time</Badge>}
+                  </td>
+                  <td className="p-3 font-bold text-primary">
+                    {formatINR(d.amount)}{d.type === "monthly" && <span className="text-xs text-muted-foreground">/mo</span>}
+                  </td>
+                  <td className="p-3 text-muted-foreground">
+                    {new Date(d.donated_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  </td>
+                  <td className="p-3 max-w-[180px]">
+                    <p className="text-xs text-muted-foreground truncate">{d.message || "—"}</p>
+                  </td>
+                  <td className="p-3 text-right">
+                    <Button size="sm" variant="ghost" onClick={() => openEdit(d)}><Pencil className="h-3 w-3" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => setDel(d)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                  </td>
+                </tr>
+              ))}
+              {items.length === 0 && (
+                <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No donors yet. Add the first one!</td></tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </Card>
 
-      {/* Add / Edit dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{editing ? "Edit Donor" : "Add Donor"}</DialogTitle></DialogHeader>
@@ -153,13 +173,12 @@ const AdminDonors = () => {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" variant="hero">Save</Button>
+              <Button type="submit" variant="hero" disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirm */}
       <AlertDialog open={!!del} onOpenChange={(o) => !o && setDel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

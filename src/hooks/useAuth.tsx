@@ -1,21 +1,19 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { api } from "@/lib/api";
 
-// ─── Hardcoded Admin Credentials ───────────────────────────────────────────
-const ADMIN_USER = "shreematagomandira@gmail.com";
-const ADMIN_PASS = "Goshala@123";
-const AUTH_KEY = "admin_auth";
+const AUTH_KEY = "admin_auth_v2";
 
 interface AuthCtx {
   isAuthenticated: boolean;
   loading: boolean;
-  login: (username: string, password: string) => boolean;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
 
 const Ctx = createContext<AuthCtx>({
   isAuthenticated: false,
   loading: true,
-  login: () => false,
+  login: async () => false,
   logout: () => {},
 });
 
@@ -24,7 +22,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check localStorage for existing session
     const stored = localStorage.getItem(AUTH_KEY);
     if (stored === "true") {
       setIsAuthenticated(true);
@@ -32,18 +29,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   }, []);
 
-  const login = (username: string, password: string): boolean => {
-    if (username === ADMIN_USER && password === ADMIN_PASS) {
-      localStorage.setItem(AUTH_KEY, "true");
-      setIsAuthenticated(true);
-      return true;
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const result = await api.login(email, password);
+      if (result.success) {
+        localStorage.setItem(AUTH_KEY, "true");
+        setIsAuthenticated(true);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
     }
-    return false;
   };
 
-  const logout = () => {
+  const logout = async () => {
     localStorage.removeItem(AUTH_KEY);
     setIsAuthenticated(false);
+    try { await api.logout(); } catch { /* ignore */ }
   };
 
   return (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getDonors } from "@/lib/adminStore";
+import { api } from "@/lib/api";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
 import { Heart, Repeat, Star, Loader2 } from "lucide-react";
@@ -55,9 +55,10 @@ const Donators = () => {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sb = supabase as any;
-        const [monthlyRes, oneTimeRes] = await Promise.all([
-          sb.from("monthly_donors").select("id, name, amount, created_at").eq("is_active", true),
-          sb.from("one_time_donations").select("id, name, amount, donated_at, message"),
+        const [monthlyRes, oneTimeRes, adminRes] = await Promise.all([
+          sb.from("monthly_donors").select("id, name, amount, created_at").eq("is_active", true).catch(() => ({ data: [] })),
+          sb.from("one_time_donations").select("id, name, amount, donated_at, message").catch(() => ({ data: [] })),
+          api.getDonors().catch(() => []),
         ]);
 
         const fromSupabase: DisplayDonor[] = [
@@ -78,8 +79,8 @@ const Donators = () => {
           })),
         ];
 
-        // Merge with admin-curated donors from localStorage
-        const adminList: DisplayDonor[] = getDonors().map((d) => ({
+        // Merge with admin-curated donors from API
+        const adminList: DisplayDonor[] = (adminRes || []).map((d: any) => ({
           id: `a-${d.id}`,
           name: d.name,
           type: d.type,

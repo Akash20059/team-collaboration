@@ -22,24 +22,26 @@ const AdminLogin = () => {
     }
   }, [isAuthenticated, loading, nav]);
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
       toast.error("Please enter both email and password");
       return;
     }
     setBusy(true);
-    // Small delay for UX
-    setTimeout(() => {
-      const ok = login(username.trim(), password);
+    try {
+      const ok = await login(username.trim(), password);
       if (ok) {
         toast.success("Welcome, Admin 🙏");
         nav("/admin", { replace: true });
       } else {
         toast.error("Invalid credentials. Please try again.");
       }
+    } catch {
+      toast.error("Could not connect to server. Is the backend running?");
+    } finally {
       setBusy(false);
-    }, 400);
+    }
   };
 
   if (loading) {

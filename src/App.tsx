@@ -7,7 +7,6 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { CartProvider } from "@/hooks/useCart";
 import { AdminRoute } from "@/components/AdminRoute";
 import { CartDrawer } from "@/components/site/CartDrawer";
-import { seedIfEmpty } from "@/lib/adminStore";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Auth from "./pages/Auth.tsx";

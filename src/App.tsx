@@ -25,6 +25,10 @@ import AdminDonors from "./pages/admin/AdminDonors.tsx";
 import AdminOrders from "./pages/admin/AdminOrders.tsx";
 import DonatePage from "./pages/DonatePage.tsx";
 import ProductsPage from "./pages/ProductsPage.tsx";
+
+// Seed default data on first visit
+seedIfEmpty();
+
 const queryClient = new QueryClient();
 
 const App = () => (

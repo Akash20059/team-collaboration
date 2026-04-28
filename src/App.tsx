@@ -25,6 +25,7 @@ import AdminDonors from "./pages/admin/AdminDonors.tsx";
 import AdminOrders from "./pages/admin/AdminOrders.tsx";
 import DonatePage from "./pages/DonatePage.tsx";
 import ProductsPage from "./pages/ProductsPage.tsx";
+import { seedIfEmpty } from "@/lib/adminStore";
 
 // Seed default data on first visit
 seedIfEmpty();

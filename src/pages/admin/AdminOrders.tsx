@@ -20,22 +20,9 @@ const AdminOrders = () => {
   }, []);
 
   const handleDispatch = (orderId: string) => {
-    const tracking = trackingInputs[orderId];
-    if (!tracking) {
-      toast.error("Please enter a tracking number (e.g. India Post tracking ID)");
-      return;
-    }
-    markOrderDispatched(orderId, tracking);
+    markOrderDispatched(orderId, "Not provided");
     setOrders(getCustomerOrders());
     toast.success(`Order ${orderId} marked as dispatched!`);
-  };
-
-  const handleUpdateTracking = (orderId: string) => {
-    const tracking = trackingInputs[orderId];
-    if (!tracking) return;
-    updateOrderTracking(orderId, tracking);
-    setOrders(getCustomerOrders());
-    toast.success("Tracking number updated");
   };
 
   // Stats

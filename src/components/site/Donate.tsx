@@ -151,13 +151,6 @@ export const Donate = () => {
     <>
       <section id="donate" className="section-pad bg-gradient-warm">
         <div className="container-page max-w-6xl">
-          <div className="text-center mb-12">
-            <p className="font-sanskrit text-primary text-lg">सेवा</p>
-            <h2 className="font-display text-3xl md:text-5xl font-bold text-secondary">Support Our Mission</h2>
-            <div className="divider-lotus"><span className="text-primary text-xl">🙏</span></div>
-            <p className="text-muted-foreground max-w-xl mx-auto">Every contribution feeds, shelters and protects a sacred life.</p>
-          </div>
-
           <div className="grid lg:grid-cols-2 gap-8">
 
             {/* LEFT — Info card (no QR until form is submitted) */}

@@ -52,13 +52,6 @@ export const Products = () => {
   return (
     <section id="products" className="section-pad bg-background">
       <div className="container-page">
-        <div className="text-center mb-12">
-          <p className="font-sanskrit text-primary text-lg">गौ उत्पाद</p>
-          <h2 className="font-display text-3xl md:text-5xl font-bold text-secondary">Pure Gau Products</h2>
-          <div className="divider-lotus"><span className="text-primary text-xl">🌿</span></div>
-          <p className="text-muted-foreground max-w-2xl mx-auto">Made with love from our Malenadu Gidda cows.</p>
-        </div>
-
         {loading ? (
           <div className="text-center text-muted-foreground py-12">Loading products...</div>
         ) : products.length === 0 ? (

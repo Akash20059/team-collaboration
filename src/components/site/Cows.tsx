@@ -12,8 +12,6 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   new_born: { label: "🐣 New Born", color: "text-amber-600 bg-amber-50 border-amber-200" },
 };
 
-const BADGE_COLORS = ["bg-emerald-500", "bg-violet-500", "bg-amber-500", "bg-sky-500", "bg-rose-500", "bg-teal-500"];
-
 export const Cows = () => {
   const [cows, setCows] = useState<Cow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +67,6 @@ export const Cows = () => {
           ">
             {cows.map((c, i) => {
               const status = STATUS_LABEL[c.health_status] || STATUS_LABEL.healthy;
-              const badgeColor = BADGE_COLORS[i % BADGE_COLORS.length];
               return (
                 <div
                   key={c.id}
@@ -87,10 +84,6 @@ export const Cows = () => {
                     ) : (
                       <div className="h-full w-full bg-muted flex items-center justify-center text-6xl">🐄</div>
                     )}
-                    {/* Number badge */}
-                    <div className={`absolute top-3 left-3 h-9 w-9 rounded-full ${badgeColor} text-white font-bold text-sm flex items-center justify-center shadow-lg`}>
-                      #{c.cow_number}
-                    </div>
                     {/* Adopted badge */}
                     {c.is_adopted && (
                       <span className="absolute top-3 right-3 bg-accent text-accent-foreground text-xs font-semibold px-3 py-1 rounded-full shadow">

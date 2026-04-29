@@ -6,7 +6,7 @@ const ProductsPage = () => (
     <Navbar />
 
     {/* Products Section */}
-    <main className="flex-1">
+    <main className="flex-1 pt-8 md:pt-12">
       <Products />
     </main>
 
@@ -34,6 +34,10 @@ const ProductsPage = () => (
           ))}
         </div>
       </div>
+
+      <svg viewBox="0 0 1440 60" className="w-full -mb-1 fill-background" preserveAspectRatio="none" height={60}>
+        <path d="M0,30 C360,60 1080,0 1440,30 L1440,60 L0,60 Z" />
+      </svg>
     </div>
 
   </div>

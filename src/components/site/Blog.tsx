@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Newspaper } from "lucide-react";
 import { api } from "@/lib/api";
 
 type BlogPost = any; // Quick type for api response
@@ -36,6 +36,11 @@ export const Blog = () => {
           <p className="font-sanskrit text-primary text-lg">समाचार</p>
           <h2 className="font-display text-3xl md:text-5xl font-bold text-secondary">Latest from Goumandira</h2>
           <div className="divider-lotus"><span className="text-primary/40 text-xl">—</span></div>
+          <div className="mt-4 flex justify-center">
+            <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+              <Newspaper className="h-5 w-5" />
+            </div>
+          </div>
         </div>
 
         {loading ? (

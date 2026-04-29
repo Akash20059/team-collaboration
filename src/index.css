@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -74,7 +75,7 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: "Times New Roman", Times, serif;
+    font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   }
   h1, h2, h3, h4 {
     font-family: inherit;

@@ -14,9 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ["Times New Roman", "Times", "serif"],
-        sans: ["Times New Roman", "Times", "serif"],
-        sanskrit: ["Times New Roman", "Times", "serif"],
+        display: ["Poppins", "system-ui", "sans-serif"],
+        sans: ["Poppins", "system-ui", "sans-serif"],
+        sanskrit: ["Poppins", "system-ui", "sans-serif"],
       },
       backgroundImage: {
         "gradient-hero": "var(--gradient-hero)",

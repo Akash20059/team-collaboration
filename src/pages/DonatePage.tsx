@@ -1,7 +1,5 @@
 import { Navbar } from "@/components/site/Navbar";
 import { Donate } from "@/components/site/Donate";
-import { Footer } from "@/components/site/Footer";
-import { Heart, Shield, Users } from "lucide-react";
 
 const stats = [
   { icon: "🐄", value: "3+", label: "Sacred Cows Protected" },
@@ -47,30 +45,10 @@ const DonatePage = () => (
       </svg>
     </div>
 
-    {/* Trust badges */}
-    <div className="bg-background border-b border-border/50">
-      <div className="container-page py-5 flex flex-wrap items-center justify-center gap-8 text-sm text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-primary" />
-          <span>Secure UPI Payment</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Heart className="h-4 w-4 text-primary" fill="currentColor" />
-          <span>Donation Receipt via Email</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-primary" />
-          <span>50+ Donors Trust Us</span>
-        </div>
-      </div>
-    </div>
-
     {/* Donate Section */}
     <main className="flex-1">
       <Donate />
     </main>
-
-    <Footer />
   </div>
 );
 

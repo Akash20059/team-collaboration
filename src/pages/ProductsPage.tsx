@@ -1,7 +1,5 @@
 import { Navbar } from "@/components/site/Navbar";
 import { Products } from "@/components/site/Products";
-import { Footer } from "@/components/site/Footer";
-import { ShoppingBag, Leaf, Award } from "lucide-react";
 
 const ProductsPage = () => (
   <div className="min-h-screen bg-background flex flex-col">
@@ -38,30 +36,10 @@ const ProductsPage = () => (
       </svg>
     </div>
 
-    {/* Trust badges */}
-    <div className="bg-background border-b border-border/50">
-      <div className="container-page py-5 flex flex-wrap items-center justify-center gap-8 text-sm text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <Leaf className="h-4 w-4 text-primary" />
-          <span>Organic & Natural</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Award className="h-4 w-4 text-primary" />
-          <span>Traditionally Prepared</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <ShoppingBag className="h-4 w-4 text-primary" />
-          <span>Pan-India Delivery</span>
-        </div>
-      </div>
-    </div>
-
     {/* Products Section */}
     <main className="flex-1">
       <Products />
     </main>
-
-    <Footer />
   </div>
 );
 

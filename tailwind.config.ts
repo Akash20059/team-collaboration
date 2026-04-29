@@ -14,9 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "Noto Sans", "sans-serif"],
-        sans: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "Noto Sans", "sans-serif"],
-        sanskrit: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "Noto Sans", "sans-serif"],
+        display: ["Times New Roman", "Times", "serif"],
+        sans: ["Times New Roman", "Times", "serif"],
+        sanskrit: ["Times New Roman", "Times", "serif"],
       },
       backgroundImage: {
         "gradient-hero": "var(--gradient-hero)",

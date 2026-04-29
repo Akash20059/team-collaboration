@@ -74,7 +74,7 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    font-family: "Times New Roman", Times, serif;
   }
   h1, h2, h3, h4 {
     font-family: inherit;

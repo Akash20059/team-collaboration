@@ -12,6 +12,10 @@ const ProductsPage = () => (
 
     {/* Hero Banner */}
     <div className="relative overflow-hidden bg-secondary">
+      <svg viewBox="0 0 1440 60" className="w-full -mt-1 fill-background" preserveAspectRatio="none" height={60}>
+        <path d="M0,30 C360,0 1080,60 1440,30 L1440,0 L0,0 Z" />
+      </svg>
+
       <div className="absolute -top-20 -right-20 h-80 w-80 rounded-full bg-accent/10 blur-3xl" />
       <div className="absolute -bottom-10 -left-10 h-60 w-60 rounded-full bg-primary/10 blur-2xl" />
 
@@ -35,9 +39,6 @@ const ProductsPage = () => (
         </div>
       </div>
 
-      <svg viewBox="0 0 1440 60" className="w-full -mb-1 fill-background" preserveAspectRatio="none" height={60}>
-        <path d="M0,30 C360,60 1080,0 1440,30 L1440,60 L0,60 Z" />
-      </svg>
     </div>
 
   </div>

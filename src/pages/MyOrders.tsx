@@ -28,12 +28,12 @@ type Order = {
 };
 
 const STATUS_META: Record<Order["order_status"], { label: string; group: "processing" | "shipped" | "completed" | "cancelled"; color: string; }> = {
-  order_placed:     { label: "Processing",       group: "processing", color: "bg-amber-100 text-amber-800 border-amber-300" },
-  payment_verified: { label: "Processing",       group: "processing", color: "bg-amber-100 text-amber-800 border-amber-300" },
-  packing:          { label: "Being packed",     group: "processing", color: "bg-amber-100 text-amber-800 border-amber-300" },
+  order_placed:     { label: "Order Received",   group: "processing", color: "bg-amber-100 text-amber-800 border-amber-300" },
+  payment_verified: { label: "Payment Confirmed",group: "processing", color: "bg-amber-100 text-amber-800 border-amber-300" },
+  packing:          { label: "Being Packed",     group: "processing", color: "bg-amber-100 text-amber-800 border-amber-300" },
   shipped:          { label: "Shipped",          group: "shipped",    color: "bg-blue-100  text-blue-800  border-blue-300"  },
-  out_for_delivery: { label: "Out for delivery", group: "shipped",    color: "bg-blue-100  text-blue-800  border-blue-300"  },
-  delivered:        { label: "Completed",        group: "completed",  color: "bg-green-100 text-green-800 border-green-300" },
+  out_for_delivery: { label: "Out for Delivery", group: "shipped",    color: "bg-blue-100  text-blue-800  border-blue-300"  },
+  delivered:        { label: "Delivered",        group: "completed",  color: "bg-green-100 text-green-800 border-green-300" },
   cancelled:        { label: "Cancelled",        group: "cancelled",  color: "bg-red-100   text-red-800   border-red-300"   },
 };
 

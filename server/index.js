@@ -88,8 +88,12 @@ async function seedDatabase() {
 }
 
 // ─── Start server ────────────────────────────────────────────────────────────
-app.listen(PORT, async () => {
-  console.log(`\n🚀 Goumandira API Server running at http://localhost:${PORT}`);
-  console.log(`   Supabase URL: ${process.env.SUPABASE_URL}`);
-  await seedDatabase();
-});
+if (require.main === module) {
+  app.listen(PORT, async () => {
+    console.log(`\n🚀 Goumandira API Server running at http://localhost:${PORT}`);
+    console.log(`   Supabase URL: ${process.env.SUPABASE_URL}`);
+    await seedDatabase();
+  });
+}
+
+module.exports = app;

@@ -19,7 +19,7 @@ type Product = {
   quantity_available: number; stock_status: string; image_url: string | null; order_link: string | null;
 };
 
-const empty = { name: "", description: "", price: 0, mrp: 0, quantity_available: 0, image_url: null as string | null, order_link: "" };
+const empty = { name: "", description: "", price: "" as number | "", mrp: "" as number | "", quantity_available: "" as number | "", image_url: null as string | null, order_link: "" };
 
 const AdminProducts = () => {
   const [items, setItems] = useState<Product[]>([]);
@@ -48,7 +48,7 @@ const AdminProducts = () => {
     setEditing(p);
     setForm({
       name: p.name, description: p.description || "", price: Number(p.price),
-      mrp: p.mrp ? Number(p.mrp) : 0, quantity_available: p.quantity_available,
+      mrp: p.mrp ? Number(p.mrp) : "", quantity_available: p.quantity_available,
       image_url: p.image_url, order_link: p.order_link || "",
     });
     setOpen(true);
@@ -56,13 +56,16 @@ const AdminProducts = () => {
 
   const onSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim() || form.price <= 0) { toast.error("Name and valid price required"); return; }
+    const priceVal = Number(form.price);
+    const mrpVal = Number(form.mrp);
+    const qtyVal = Number(form.quantity_available);
+    if (!form.name.trim() || priceVal <= 0 || isNaN(priceVal)) { toast.error("Name and valid price required"); return; }
     setSaving(true);
     try {
       const payload = {
         name: form.name.trim(), description: form.description.trim(),
-        price: form.price, mrp: form.mrp > 0 ? form.mrp : null,
-        quantity_available: form.quantity_available,
+        price: priceVal, mrp: mrpVal > 0 ? mrpVal : null,
+        quantity_available: isNaN(qtyVal) ? 0 : qtyVal,
         image_url: form.image_url, order_link: form.order_link.trim() || null,
       };
       if (editing) {
@@ -152,10 +155,10 @@ const AdminProducts = () => {
             <div><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required maxLength={100} /></div>
             <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} maxLength={500} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Price (₹) *</Label><Input type="number" min={0} step={1} value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} required /></div>
-              <div><Label>MRP (₹)</Label><Input type="number" min={0} step={1} value={form.mrp} onChange={(e) => setForm({ ...form, mrp: Number(e.target.value) })} /></div>
+              <div><Label>Price (₹) *</Label><Input type="number" min={0} step={1} value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value === "" ? "" : Number(e.target.value) })} required /></div>
+              <div><Label>MRP (₹)</Label><Input type="number" min={0} step={1} value={form.mrp} onChange={(e) => setForm({ ...form, mrp: e.target.value === "" ? "" : Number(e.target.value) })} /></div>
             </div>
-            <div><Label>Quantity Available *</Label><Input type="number" min={0} value={form.quantity_available} onChange={(e) => setForm({ ...form, quantity_available: Number(e.target.value) })} required /></div>
+            <div><Label>Quantity Available *</Label><Input type="number" min={0} value={form.quantity_available} onChange={(e) => setForm({ ...form, quantity_available: e.target.value === "" ? "" : Number(e.target.value) })} required /></div>
             <div><Label>External Order Link (optional)</Label><Input type="url" value={form.order_link} onChange={(e) => setForm({ ...form, order_link: e.target.value })} placeholder="https://..." /></div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

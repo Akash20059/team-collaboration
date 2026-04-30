@@ -12,7 +12,6 @@ const links = [
   { id: "products", label: "Products" },
   { id: "donators", label: "Donators" },
   { id: "my-orders", label: "My Orders" },
-  { id: "admin", label: "Admin" },
   { id: "connect", label: "Connect" },
 ];
 

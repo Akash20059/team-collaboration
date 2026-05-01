@@ -52,12 +52,16 @@ const AdminOrders = () => {
 
   const handleDispatch = async (orderId: string) => {
     const tracking = "Not provided";
+    // Apply optimistic update so UI reacts instantly
+    setOrders((prev) => prev.map((o) => o.order_id === orderId ? { ...o, order_status: "shipped", updated_at: new Date().toISOString() } : o));
+    
     try {
       await api.dispatchOrder(orderId, { tracking_number: tracking });
       toast.success(`Order ${orderId} marked as dispatched!`);
-      fetchOrders();
+      fetchOrders(); // Refresh silently in background
     } catch (err: any) {
       toast.error(`Failed to dispatch: ${err.message}`);
+      fetchOrders(); // Revert changes if error occurs
     }
   };
 

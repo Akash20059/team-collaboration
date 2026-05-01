@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Truck, Clock, CheckCircle2, Search, Calendar, Loader2 } from "lucide-react";
+import { Package, Truck, Clock, CheckCircle2, Search, Calendar, Loader2, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/config";
 import { api } from "@/lib/api";
@@ -51,7 +51,7 @@ const AdminOrders = () => {
   }, []);
 
   const handleDispatch = async (orderId: string) => {
-    const tracking = trackingInputs[orderId] || "Not provided";
+    const tracking = "Not provided";
     try {
       await api.dispatchOrder(orderId, { tracking_number: tracking });
       toast.success(`Order ${orderId} marked as dispatched!`);
@@ -195,10 +195,10 @@ const AdminOrders = () => {
                 <div>
                   <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Customer & Delivery</h4>
                   <p className="font-semibold text-secondary">{o.customer_name}</p>
-                  <p className="text-sm text-muted-foreground mb-2">?? {o.customer_mobile}</p>
-                  <div className="text-sm bg-muted/30 p-3 rounded-lg text-secondary-foreground/80 mt-2">
+                  <p className="text-sm text-muted-foreground flex items-center gap-1.5 mb-2"><Phone className="h-3.5 w-3.5" /> {o.customer_mobile}</p>
+                  <div className="text-sm bg-secondary/5 p-3 rounded-lg text-secondary-foreground mt-2 border border-border/50">
                     <p>{o.address_line1}</p>
-                    <p>{o.city}, {o.state} — <span className="font-mono font-medium">{o.pincode}</span></p>
+                    <p>{o.city}, {o.state} ï¿½ <span className="font-mono font-medium">{o.pincode}</span></p>
                   </div>
                 </div>
 
@@ -218,37 +218,20 @@ const AdminOrders = () => {
 
                   <div className="pt-4 border-t border-border mt-auto">
                     {isPending(o.order_status) ? (
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Tracking Number (e.g. India Post)"
-                          value={trackingInputs[o.order_id] || ""}
-                          onChange={(e) => setTrackingInputs({ ...trackingInputs, [o.order_id]: e.target.value })}
-                          className="text-sm"
-                        />
+                      <div className="flex gap-2 justify-end">
                         <Button onClick={() => handleDispatch(o.order_id)} className="shrink-0 bg-green-600 hover:bg-green-700">
                           Mark Dispatched
                         </Button>
                       </div>
                     ) : (
                       <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center justify-between">
                           <p className="text-xs text-green-800 font-medium flex items-center gap-1.5 line-clamp-1">
                             <Truck className="h-3.5 w-3.5" /> Dispatched via {o.courier_partner || "Indian Post"}
                           </p>
                           <p className="text-[10px] text-green-600">
                             {o.updated_at ? new Date(o.updated_at).toLocaleDateString() : ""}
                           </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Tracking Number"
-                            value={trackingInputs[o.order_id] ?? o.awb_number ?? ""}
-                            onChange={(e) => setTrackingInputs({ ...trackingInputs, [o.order_id]: e.target.value })}
-                            className="h-8 text-xs bg-white border-green-200 focus-visible:ring-green-500"
-                          />
-                          <Button size="sm" variant="outline" className="h-8 border-green-200 text-green-700 hover:bg-green-100" onClick={() => handleUpdateTracking(o.order_id)}>
-                            Update
-                          </Button>
                         </div>
                       </div>
                     )}

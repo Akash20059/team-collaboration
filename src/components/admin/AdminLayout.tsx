@@ -1,17 +1,39 @@
 import { ReactNode } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Cog as Cow, FileText, LogOut, Menu, Heart, ShoppingBag } from "lucide-react";
+import { LayoutDashboard, Package, FileText, LogOut, Menu, Heart, ShoppingBag } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import logo from "@/assets/logo.png";
 import { cn } from "@/lib/utils";
 
+const CustomCowIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M3 10a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" />
+    <path d="M3 13c3.13 1 6.87 2.5 9 2.5s5.87 -1.5 9 -2.5" />
+    <path d="M5 20v2" />
+    <path d="M19 20v2" />
+    <path d="M6 10l-1.5 -3.5a1.5 1.5 0 0 1 1 -2z" />
+    <path d="M18 10l1.5 -3.5a1.5 1.5 0 0 0 -1 -2z" />
+    <path d="M9 10v-3l-2 -3" />
+    <path d="M15 10v-3l2 -3" />
+  </svg>
+);
+
 const navItems = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, end: true },
   { to: "/admin/orders", label: "Orders", icon: ShoppingBag },
   { to: "/admin/products", label: "Products", icon: Package },
-  { to: "/admin/cows", label: "Our Cows", icon: Cow },
+  { to: "/admin/cows", label: "Our Cows", icon: CustomCowIcon },
   { to: "/admin/blog", label: "Updates", icon: FileText },
   { to: "/admin/donors", label: "Donators", icon: Heart },
 ];

@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useCart } from "@/hooks/useCart";
 import { SavedAddress } from "@/lib/savedAddress";
 import { computeDelivery, formatINR, SITE_CONFIG } from "@/lib/config";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Copy, Loader2 } from "lucide-react";
 
@@ -55,9 +55,7 @@ const CheckoutPayment = () => {
       const orderItems = items.map((i) => ({
         id: i.id, name: i.name, price: i.price, quantity: i.quantity, image_url: i.image_url,
       }));
-      const { data, error } = await supabase
-        .from("orders")
-        .insert({
+      const data = await api.createOrder({
           customer_name: address.full_name,
           customer_mobile: address.mobile,
           address_line1: address.address_line1,
@@ -73,11 +71,7 @@ const CheckoutPayment = () => {
           total_amount: total,
           payment_method: method,
           payment_reference: method === "upi" ? paymentRef.trim() : null,
-        })
-        .select("order_id")
-        .single();
-
-      if (error) throw error;
+        });
 
       // WhatsApp notify owner
       const msg = `🙏 New Order: ${data.order_id}%0A👤 ${address.full_name} (${address.mobile})%0A📍 ${address.city}, ${address.state} - ${address.pincode}%0A💰 Total: ${formatINR(total)}%0A💳 ${method.toUpperCase()}${method === "upi" ? ` (UTR: ${paymentRef})` : ""}%0A%0AItems:%0A${items.map((i) => `• ${i.name} x ${i.quantity}`).join("%0A")}`;

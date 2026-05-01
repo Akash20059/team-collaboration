@@ -65,6 +65,21 @@ const AdminOrders = () => {
     }
   };
 
+  const handleUndoDispatch = async (orderId: string) => {
+    // Optimistic update
+    setOrders((prev) => prev.map((o) => o.order_id === orderId ? { ...o, order_status: "payment_verified" } : o));
+    
+    try {
+      // Assuming api.updateOrderStatus exists based on previous codebase read
+      await api.updateOrderStatus(orderId, { order_status: "payment_verified" });
+      toast.success(`Order ${orderId} reverted to pending.`);
+      fetchOrders();
+    } catch (err: any) {
+      toast.error(`Failed to revert: ${err.message}`);
+      fetchOrders();
+    }
+  };
+
   const handleUpdateTracking = async (orderId: string) => {
     const tracking = trackingInputs[orderId];
     if (!tracking) return;
@@ -230,12 +245,22 @@ const AdminOrders = () => {
                     ) : (
                       <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                         <div className="flex items-center justify-between">
-                          <p className="text-xs text-green-800 font-medium flex items-center gap-1.5 line-clamp-1">
-                            <Truck className="h-3.5 w-3.5" /> Dispatched via {o.courier_partner || "Indian Post"}
-                          </p>
-                          <p className="text-[10px] text-green-600">
-                            {o.updated_at ? new Date(o.updated_at).toLocaleDateString() : ""}
-                          </p>
+                            <div>
+                              <p className="text-xs text-green-800 font-medium flex items-center gap-1.5 line-clamp-1 mb-0.5">
+                                <Truck className="h-3.5 w-3.5" /> Dispatched via {o.courier_partner || "Indian Post"}
+                              </p>
+                              <p className="text-[10px] text-green-600 ml-5">
+                                {o.updated_at ? new Date(o.updated_at).toLocaleDateString() : ""}
+                              </p>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="h-7 px-3 text-[10px] uppercase font-bold tracking-wider text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700" 
+                              onClick={() => handleUndoDispatch(o.order_id)}
+                            >
+                              Undo
+                            </Button>
                         </div>
                       </div>
                     )}

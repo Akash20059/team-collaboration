@@ -18,10 +18,12 @@ const navItems = [
 
 const SidebarContent = ({ onNav }: { onNav?: () => void }) => (
   <div className="h-full flex flex-col bg-secondary text-secondary-foreground">
-    <div className="p-4 border-b border-secondary-foreground/15 flex items-center gap-2">
-      <img src={logo} alt="" className="h-10 w-10 object-contain" />
+    <div className="p-4 border-b border-secondary-foreground/15 flex items-center gap-3">
+      <div className="h-11 w-11 rounded-full overflow-hidden shrink-0 border-[3px] border-primary bg-white">
+        <img src={logo} alt="Goumandira" className="h-full w-full object-cover scale-105" />
+      </div>
       <div>
-        <p className="font-display font-bold text-sm leading-tight">Goumandira</p>
+        <p className="font-display font-bold text-sm leading-tight text-white">Goumandira</p>
         <p className="text-xs text-secondary-foreground/70">Admin Panel</p>
       </div>
     </div>

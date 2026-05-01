@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, Link, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Package, Cog as Cow, FileText, LogOut, Menu, Heart, ShoppingBag } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ const navItems = [
 
 const SidebarContent = ({ onNav }: { onNav?: () => void }) => (
   <div className="h-full flex flex-col bg-secondary text-secondary-foreground">
-    <div className="p-4 border-b border-secondary-foreground/15 flex items-center gap-3">
+    <Link to="/" className="p-4 border-b border-secondary-foreground/15 flex items-center gap-3 transition-opacity hover:opacity-80">
       <div className="h-11 w-11 rounded-full overflow-hidden shrink-0 border-[3px] border-primary bg-white">
         <img src={logo} alt="Goumandira" className="h-full w-full object-cover scale-105" />
       </div>
@@ -26,7 +26,7 @@ const SidebarContent = ({ onNav }: { onNav?: () => void }) => (
         <p className="font-display font-bold text-sm leading-tight text-white">Goumandira</p>
         <p className="text-xs text-secondary-foreground/70">Admin Panel</p>
       </div>
-    </div>
+    </Link>
     <nav className="flex-1 p-3 space-y-1">
       {navItems.map((it) => (
         <NavLink

@@ -42,6 +42,7 @@ export const api = {
 
   // ─── Orders ───────────────────────────────────────────────────────────────
   getOrders: (status?: string) => apiFetch<any[]>(`/orders${status ? `?status=${status}` : ""}`),
+  createOrder: (data: any) => apiFetch<any>("/orders/place", { method: "POST", body: JSON.stringify(data) }),
   dispatchOrder: (orderId: string, data: { tracking_number: string; courier_partner?: string }) =>
     apiFetch<any>(`/orders/${orderId}/dispatch`, { method: "PUT", body: JSON.stringify(data) }),
   updateTracking: (orderId: string, tracking_number: string) =>

@@ -19,6 +19,76 @@ router.get("/", async (req, res) => {
   res.json(data);
 });
 
+// POST create order and decrement inventory
+router.post("/place", async (req, res) => {
+  const { items, ...orderPayload } = req.body || {};
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: "Order items are required" });
+  }
+
+  try {
+    // 1. Validate stock availability for every item before placing the order
+    const productIds = items.map((i) => i.id);
+    const { data: products, error: fetchErr } = await supabase
+      .from("products")
+      .select("id, name, quantity_available")
+      .in("id", productIds);
+
+    if (fetchErr) return res.status(500).json({ error: fetchErr.message });
+
+    // Build a lookup map for quick access
+    const productMap = {};
+    for (const p of products) productMap[p.id] = p;
+
+    // Check each item has sufficient stock
+    for (const item of items) {
+      const product = productMap[item.id];
+      if (!product) {
+        return res.status(400).json({ error: `Product "${item.name || item.id}" not found` });
+      }
+      if (product.quantity_available < (item.quantity || 1)) {
+        return res.status(400).json({
+          error: `"${product.name}" has only ${product.quantity_available} left in stock`,
+        });
+      }
+    }
+
+    // 2. Insert the order
+    const { data, error } = await supabase
+      .from("orders")
+      .insert({
+        ...orderPayload,
+        items,
+      })
+      .select("order_id")
+      .single();
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    // 3. Decrement stock for each purchased product
+    for (const item of items) {
+      const product = productMap[item.id];
+      const qty = item.quantity || 1;
+      const newQty = Math.max(0, product.quantity_available - qty);
+      const newStatus = newQty <= 0 ? "out_of_stock" : newQty < 5 ? "low_stock" : "in_stock";
+
+      await supabase
+        .from("products")
+        .update({
+          quantity_available: newQty,
+          stock_status: newStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", item.id);
+    }
+
+    res.status(201).json(data);
+  } catch (err) {
+    res.status(400).json({ error: err.message || "Could not place order" });
+  }
+});
+
 // PUT mark order as dispatched/shipped
 router.put("/:orderId/dispatch", async (req, res) => {
   const { orderId } = req.params;

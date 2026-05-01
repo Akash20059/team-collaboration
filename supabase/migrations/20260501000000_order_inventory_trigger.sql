@@ -1,0 +1,11 @@
+-- ============================================================================
+-- Stock Inventory Management
+-- ============================================================================
+-- Stock decrement is handled by the backend (server/routes/orders.js)
+-- in the POST /orders/place route. The backend:
+--   1. Validates stock availability before placing the order
+--   2. Inserts the order into the orders table
+--   3. Decrements quantity_available and updates stock_status for each product
+--
+-- A database trigger is NOT used to avoid double-decrement issues.
+-- ============================================================================

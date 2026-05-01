@@ -196,9 +196,9 @@ const AdminOrders = () => {
                   <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Customer & Delivery</h4>
                   <p className="font-semibold text-secondary">{o.customer_name}</p>
                   <p className="text-sm text-muted-foreground flex items-center gap-1.5 mb-2"><Phone className="h-3.5 w-3.5" /> {o.customer_mobile}</p>
-                  <div className="text-sm bg-secondary/5 p-3 rounded-lg text-secondary-foreground mt-2 border border-border/50">
+                  <div className="text-sm bg-gray-100 p-3 rounded-lg text-gray-900 mt-2 border border-gray-200">
                     <p>{o.address_line1}</p>
-                    <p>{o.city}, {o.state} � <span className="font-mono font-medium">{o.pincode}</span></p>
+                    <p>{o.city}, {o.state} - <span className="font-mono font-medium text-gray-700">{o.pincode}</span></p>
                   </div>
                 </div>
 

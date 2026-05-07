@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Menu, X, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const links = [
   { id: "home", label: "Home" },
@@ -19,6 +20,8 @@ export const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { count, setOpen: setCartOpen } = useCart();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -30,27 +33,31 @@ export const Navbar = () => {
   const go = (id: string) => {
     setOpen(false);
     if (id === "admin") {
-      window.location.href = "/admin/login";
+      navigate("/admin/login");
       return;
     }
     if (id === "my-orders") {
-      window.location.href = "/my-orders";
+      navigate("/my-orders");
       return;
     }
     if (id === "donators") {
-      window.location.href = "/donators";
+      navigate("/donators");
       return;
     }
     if (id === "donate") {
-      window.location.href = "/donate";
+      navigate("/donate");
       return;
     }
     if (id === "products") {
-      window.location.href = "/products";
+      navigate("/products");
       return;
     }
-    if (window.location.pathname !== "/") {
-      window.location.href = `/#${id}`;
+    if (location.pathname !== "/") {
+      navigate(`/#${id}`);
+      return;
+    }
+    if (id === "home") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });

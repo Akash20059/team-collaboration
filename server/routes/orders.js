@@ -37,9 +37,11 @@ router.post("/place", async (req, res) => {
 
     if (fetchErr) return res.status(500).json({ error: fetchErr.message });
 
+    // Build a lookup map for quick access
     const productMap = {};
     for (const p of products) productMap[p.id] = p;
 
+    // Check each item has sufficient stock
     for (const item of items) {
       const product = productMap[item.id];
       if (!product) {
@@ -55,7 +57,10 @@ router.post("/place", async (req, res) => {
     // 2. Insert the order
     const { data, error } = await supabase
       .from("orders")
-      .insert({ ...orderPayload, items })
+      .insert({
+        ...orderPayload,
+        items,
+      })
       .select("order_id")
       .single();
 
@@ -70,7 +75,11 @@ router.post("/place", async (req, res) => {
 
       await supabase
         .from("products")
-        .update({ quantity_available: newQty, stock_status: newStatus, updated_at: new Date().toISOString() })
+        .update({
+          quantity_available: newQty,
+          stock_status: newStatus,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", item.id);
     }
 

@@ -8,13 +8,23 @@ import { api } from "@/lib/api";
 
 export const Gallery = () => {
   const [items, setItems] = useState<any[]>([]);
-  const [videoTriggered, setVideoTriggered] = useState(false);
   const videoRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setVideoTriggered(entry.isIntersecting);
+        if (iframeRef.current && iframeRef.current.contentWindow) {
+          if (entry.isIntersecting) {
+            // Play unmuted video when in view
+            iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: "command", func: "playVideo" }), "*");
+            iframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+          } else {
+            // Pause video when out of view
+            iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: "command", func: "pauseVideo" }), "*");
+            iframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
+          }
+        }
       },
       { threshold: 0.3 }
     );
@@ -77,31 +87,26 @@ export const Gallery = () => {
           if (heroSource) {
             let embedUrl = heroSource.url;
             
-            // Robust YouTube URL to Embed conversion
+            // Robust YouTube URL to Embed conversion (adding enablejsapi=1)
             const ytMatch = embedUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|watch\?v=|watch\?.+&v=))((\w|-){11})/);
             if (ytMatch && ytMatch[1]) {
-              embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&mute=1`;
+              embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}?enablejsapi=1`;
             } else if (embedUrl.includes("vimeo.com/")) {
                const vimeoId = embedUrl.split("vimeo.com/")[1]?.split(/[?&]/)[0];
-               if (vimeoId) embedUrl = `https://player.vimeo.com/video/${vimeoId}?autoplay=1&muted=1`;
+               if (vimeoId) embedUrl = `https://player.vimeo.com/video/${vimeoId}?api=1`;
             }
 
             return (
               <div ref={videoRef} className="mt-6 relative aspect-video rounded-2xl overflow-hidden bg-secondary shadow-warm flex items-center justify-center">
-                {videoTriggered ? (
-                  <iframe
-                    src={embedUrl}
-                    title={heroSource.title || "Video"}
-                    className="absolute inset-0 h-full w-full object-cover z-20 pointer-events-auto"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                    <div className="animate-pulse w-16 h-16 rounded-full bg-primary/40" />
-                  </div>
-                )}
+                <iframe
+                  ref={iframeRef}
+                  src={embedUrl}
+                  title={heroSource.title || "Video"}
+                  className="absolute inset-0 h-full w-full object-cover z-20 pointer-events-auto"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
               </div>
             )
           }

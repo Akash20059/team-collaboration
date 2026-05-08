@@ -34,7 +34,7 @@ const links = [
 ];
 
 export const Connect = () => (
-  <section id="connect" className="section-pad bg-background">
+  <section id="connect" className="section-pad bg-background scroll-mt-20">
     <div className="container-page max-w-5xl">
       <div className="text-center mb-12">
         <p className="font-sanskrit text-primary text-lg">सत्संग</p>

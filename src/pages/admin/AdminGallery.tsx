@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ImageUpload } from "@/components/admin/ImageUpload";
-import { Pencil, Trash2, Plus, Loader2 } from "lucide-react";
+import { Pencil, Trash2, Plus, Loader2, Video, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 
@@ -27,8 +27,25 @@ export const AdminGallery = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<typeof empty>(empty);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isMediaTypeVideo, setIsMediaTypeVideo] = useState(false);
 
   const [delId, setDelId] = useState<string | null>(null);
+
+  const isVideoUrl = (url: string) => /youtube\.com|youtu\.be|vimeo\.com/i.test(url);
+
+  const openCreateDialog = (video: boolean) => {
+    setForm(empty);
+    setEditingId(null);
+    setIsMediaTypeVideo(video);
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (img: GalleryImage) => {
+    setForm({ url: img.url, title: img.title || "", display_order: img.display_order });
+    setEditingId(img.id);
+    setIsMediaTypeVideo(isVideoUrl(img.url));
+    setDialogOpen(true);
+  };
 
   const load = async () => {
     try {
@@ -80,8 +97,11 @@ export const AdminGallery = () => {
 
   return (
     <AdminLayout title="Gallery Management">
-      <div className="flex justify-end mb-6">
-        <Button onClick={() => { setForm(empty); setEditingId(null); setDialogOpen(true); }}>
+      <div className="flex justify-end gap-3 mb-6">
+        <Button variant="outline" onClick={() => openCreateDialog(true)}>
+          <Video className="mr-2 h-4 w-4" /> Add Video Link
+        </Button>
+        <Button onClick={() => openCreateDialog(false)}>
           <Plus className="mr-2 h-4 w-4" /> Add Image
         </Button>
       </div>
@@ -92,12 +112,21 @@ export const AdminGallery = () => {
         <Card className="p-8 text-center text-muted-foreground">No gallery images found.</Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {images.map(img => (
+          {images.map(img => {
+            const isVideo = isVideoUrl(img.url);
+            return (
             <Card key={img.id} className="overflow-hidden group">
               <div className="aspect-square relative flex bg-gray-100">
-                <img src={img.url} alt={img.title} className="w-full h-full object-cover" />
+                {isVideo ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-secondary text-secondary-foreground">
+                    <Video className="w-12 h-12 mb-2 opacity-50" />
+                    <span className="text-xs truncate px-4">{img.url}</span>
+                  </div>
+                ) : (
+                  <img src={img.url} alt={img.title} className="w-full h-full object-cover" />
+                )}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <Button size="icon" variant="secondary" onClick={() => { setForm({ url: img.url, title: img.title || "", display_order: img.display_order }); setEditingId(img.id); setDialogOpen(true); }}>
+                  <Button size="icon" variant="secondary" onClick={() => openEditDialog(img)}>
                     <Pencil className="h-4 w-4" />
                   </Button>
                   <Button size="icon" variant="destructive" onClick={() => setDelId(img.id)}>
@@ -106,11 +135,14 @@ export const AdminGallery = () => {
                 </div>
               </div>
               <div className="p-3">
-                <p className="font-medium truncate">{img.title || "No Title"}</p>
+                <div className="flex items-center gap-2 mb-1">
+                  {isVideo ? <Video className="w-3 h-3 text-muted-foreground" /> : <ImageIcon className="w-3 h-3 text-muted-foreground" />}
+                  <p className="font-medium truncate text-sm">{img.title || "No Title"}</p>
+                </div>
                 <p className="text-xs text-muted-foreground">Order: {img.display_order}</p>
               </div>
             </Card>
-          ))}
+          )})}
         </div>
       )}
 
@@ -118,15 +150,28 @@ export const AdminGallery = () => {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Gallery Image" : "Add Gallery Image"}</DialogTitle>
+            <DialogTitle>
+              {editingId ? "Edit" : "Add"} {isMediaTypeVideo ? "Video Link" : "Gallery Image"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label>Image</Label>
-              <ImageUpload
-                value={form.url}
-                onChange={(url) => setForm({ ...form, url: url || "" })}
-              />
+              <Label>{isMediaTypeVideo ? "YouTube/Vimeo Embed URL" : "Image"}</Label>
+              {isMediaTypeVideo ? (
+                <div className="mt-2 space-y-2">
+                  <Input 
+                    value={form.url} 
+                    onChange={(e) => setForm({ ...form, url: e.target.value })} 
+                    placeholder="https://www.youtube.com/embed/..." 
+                  />
+                  <p className="text-xs text-muted-foreground font-medium">Use the "embed" link from YouTube or Vimeo for best results. E.g. https://www.youtube.com/embed/xyz123</p>
+                </div>
+              ) : (
+                <ImageUpload
+                  value={form.url}
+                  onChange={(url) => setForm({ ...form, url: url || "" })}
+                />
+              )}
             </div>
             <div>
               <Label>Title / Alt Text</Label>

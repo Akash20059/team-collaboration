@@ -40,22 +40,41 @@ export const Gallery = () => {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
-          {items.map((it, i) => (
+          {items.map((it, i) => {
+            const isVid = /youtube\.com|youtu\.be|vimeo\.com/i.test(it.url);
+            let embedUrl = it.url;
+            if (isVid && it.url.includes("watch?v=")) embedUrl = it.url.replace("watch?v=", "embed/");
+            else if (isVid && it.url.includes("youtu.be/")) embedUrl = it.url.replace("youtu.be/", "youtube.com/embed/");
+
+            return (
             <div
               key={i}
               className={`group relative overflow-hidden rounded-xl shadow-soft hover:shadow-warm transition-smooth ${
                 i === 0 ? "col-span-2 row-span-2 md:col-span-2 md:row-span-2 aspect-[4/3] md:aspect-square" : "aspect-square"
               }`}
             >
-              <img
-                src={it.url}
-                alt={it.title}
-                loading="lazy"
-                className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-secondary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              {isVid ? (
+                <iframe
+                  src={embedUrl}
+                  title={it.title || "Video"}
+                  className="absolute inset-0 h-full w-full object-cover z-20 pointer-events-auto"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <>
+                  <img
+                    src={it.url}
+                    alt={it.title}
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-cover group-hover:scale-110 transition-transform duration-700 pointer-events-none"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-secondary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                </>
+              )}
             </div>
-          ))}
+          )})}
         </div>
 
         <div className="mt-6 relative aspect-video rounded-2xl overflow-hidden bg-secondary shadow-warm flex items-center justify-center">

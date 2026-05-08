@@ -16,14 +16,19 @@ export const Gallery = () => {
   useEffect(() => {
     if (!iframeRef.current || !iframeRef.current.contentWindow) return;
     
-    // As soon as both are true (visible and iframe fully loaded), play.
-    if (isVisible && isIframeLoaded) {
-      iframeRef.current.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
-      iframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-    } else if (!isVisible && isIframeLoaded) {
-      iframeRef.current.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
-      iframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
-    }
+    // Add a slight delay to ensure the player's internal API is fully initialized
+    const timer = setTimeout(() => {
+      if (!iframeRef.current || !iframeRef.current.contentWindow) return;
+      if (isVisible && isIframeLoaded) {
+        iframeRef.current.contentWindow.postMessage('{"event":"command","func":"playVideo","args":[]}', '*');
+        iframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+      } else if (!isVisible && isIframeLoaded) {
+        iframeRef.current.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":[]}', '*');
+        iframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
   }, [isVisible, isIframeLoaded]);
 
   useEffect(() => {
@@ -31,7 +36,7 @@ export const Gallery = () => {
       ([entry]) => {
         setIsVisible(entry.isIntersecting);
       },
-      { threshold: 0.3 }
+      { threshold: 0.1 }
     );
     if (videoRef.current) observer.observe(videoRef.current);
     return () => observer.disconnect();
@@ -95,10 +100,10 @@ export const Gallery = () => {
             // Robust YouTube URL to Embed conversion (adding enablejsapi=1)
             const ytMatch = embedUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|watch\?v=|watch\?.+&v=))((\w|-){11})/);
             if (ytMatch && ytMatch[1]) {
-              embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}?enablejsapi=1`;
+              embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}?enablejsapi=1&autoplay=0&rel=0`;
             } else if (embedUrl.includes("vimeo.com/")) {
                const vimeoId = embedUrl.split("vimeo.com/")[1]?.split(/[?&]/)[0];
-               if (vimeoId) embedUrl = `https://player.vimeo.com/video/${vimeoId}?api=1`;
+               if (vimeoId) embedUrl = `https://player.vimeo.com/video/${vimeoId}?api=1&autoplay=0`;
             }
 
             return (

@@ -19,16 +19,9 @@ const Index = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // If navigation state requested a scroll (navigate('/', { state: { scrollTo: id } }))
-    const stateAny = location.state as any;
-    if (stateAny && stateAny.scrollTo) {
-      setTimeout(() => scrollToIdWithOffset(stateAny.scrollTo), 80);
-      return;
-    }
-
-    // If URL has a hash (direct link), try to scroll after load
+    // If URL has a hash (direct link or redirected from navbar)
     tryScrollHashOnLoad();
-  }, [location]);
+  }, [location.hash]);
 
   return (
     <div className="min-h-screen bg-background">

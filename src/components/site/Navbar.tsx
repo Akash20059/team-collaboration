@@ -53,7 +53,7 @@ export const Navbar = () => {
       return;
     }
     if (location.pathname !== "/") {
-      navigate("/", { state: { scrollTo: id } });
+      navigate(`/#${id}`);
       return;
     }
     if (id === "home") {

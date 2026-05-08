@@ -8,23 +8,28 @@ import { api } from "@/lib/api";
 
 export const Gallery = () => {
   const [items, setItems] = useState<any[]>([]);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isIframeLoaded, setIsIframeLoaded] = useState(false);
   const videoRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
+    if (!iframeRef.current || !iframeRef.current.contentWindow) return;
+    
+    // As soon as both are true (visible and iframe fully loaded), play.
+    if (isVisible && isIframeLoaded) {
+      iframeRef.current.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+      iframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
+    } else if (!isVisible && isIframeLoaded) {
+      iframeRef.current.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+      iframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
+    }
+  }, [isVisible, isIframeLoaded]);
+
+  useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (iframeRef.current && iframeRef.current.contentWindow) {
-          if (entry.isIntersecting) {
-            // Play unmuted video when in view
-            iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: "command", func: "playVideo" }), "*");
-            iframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-          } else {
-            // Pause video when out of view
-            iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: "command", func: "pauseVideo" }), "*");
-            iframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
-          }
-        }
+        setIsVisible(entry.isIntersecting);
       },
       { threshold: 0.3 }
     );
@@ -100,6 +105,7 @@ export const Gallery = () => {
               <div ref={videoRef} className="mt-6 relative aspect-video rounded-2xl overflow-hidden bg-secondary shadow-warm flex items-center justify-center">
                 <iframe
                   ref={iframeRef}
+                  onLoad={() => setIsIframeLoaded(true)}
                   src={embedUrl}
                   title={heroSource.title || "Video"}
                   className="absolute inset-0 h-full w-full object-cover z-20 pointer-events-auto"

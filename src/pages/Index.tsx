@@ -13,24 +13,21 @@ import { Footer } from "@/components/site/Footer";
 import { FloatingActions } from "@/components/site/FloatingActions";
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import { scrollToIdWithOffset, tryScrollHashOnLoad } from "@/lib/scroll";
 
 const Index = () => {
   const location = useLocation();
 
   useEffect(() => {
-    if (location.hash) {
-      const id = location.hash.replace("#", "");
-      const element = document.getElementById(id);
-      if (element) {
-        setTimeout(() => {
-          const yOffset = -90; // offset for fixed navbar
-          const y = element.getBoundingClientRect().top + window.scrollY + yOffset;
-          window.scrollTo({ top: y, behavior: "smooth" });
-        }, 100);
-      }
-    } else {
-      window.scrollTo(0, 0);
+    // If navigation state requested a scroll (navigate('/', { state: { scrollTo: id } }))
+    const stateAny = location.state as any;
+    if (stateAny && stateAny.scrollTo) {
+      setTimeout(() => scrollToIdWithOffset(stateAny.scrollTo), 80);
+      return;
     }
+
+    // If URL has a hash (direct link), try to scroll after load
+    tryScrollHashOnLoad();
   }, [location]);
 
   return (

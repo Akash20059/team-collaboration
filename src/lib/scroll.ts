@@ -17,15 +17,11 @@ export function tryScrollHashOnLoad() {
   if (!hash) return;
   const id = hash.replace("#", "");
 
-  // Wait for layout to settle and element to exist
-  const maxAttempts = 10;
-  let attempts = 0;
-  const t = setInterval(() => {
-    const el = document.getElementById(id);
-    if (el || attempts >= maxAttempts) {
-      clearInterval(t);
-      if (el) scrollToIdWithOffset(id, "smooth");
-    }
-    attempts++;
-  }, 80);
+  // Fire multiple times to account for images/layout shifts rendering dynamically
+  const delays = [50, 300, 800, 1500];
+  delays.forEach(delay => {
+    setTimeout(() => {
+      scrollToIdWithOffset(id, delay === 1500 ? "smooth" : "auto");
+    }, delay);
+  });
 }

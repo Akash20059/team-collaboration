@@ -9,27 +9,36 @@ import { api } from "@/lib/api";
 export const Gallery = () => {
   const [items, setItems] = useState<any[]>([]);
   const [isVisible, setIsVisible] = useState(false);
-  const [isIframeLoaded, setIsIframeLoaded] = useState(false);
   const videoRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // Send play/pause commands to the iframe
   useEffect(() => {
     if (!iframeRef.current || !iframeRef.current.contentWindow) return;
     
-    // Add a slight delay to ensure the player's internal API is fully initialized
-    const timer = setTimeout(() => {
+    const sendCommand = () => {
       if (!iframeRef.current || !iframeRef.current.contentWindow) return;
-      if (isVisible && isIframeLoaded) {
-        iframeRef.current.contentWindow.postMessage('{"event":"command","func":"playVideo","args":[]}', '*');
+      if (isVisible) {
+        iframeRef.current.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
         iframeRef.current.contentWindow.postMessage('{"method":"play"}', '*');
-      } else if (!isVisible && isIframeLoaded) {
-        iframeRef.current.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":[]}', '*');
+      } else {
+        iframeRef.current.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
         iframeRef.current.contentWindow.postMessage('{"method":"pause"}', '*');
       }
-    }, 300);
+    };
 
-    return () => clearTimeout(timer);
-  }, [isVisible, isIframeLoaded]);
+    // Fire immediately and also staggered to ensure the player catches it after load
+    sendCommand();
+    const t1 = setTimeout(sendCommand, 300);
+    const t2 = setTimeout(sendCommand, 800);
+    const t3 = setTimeout(sendCommand, 1500);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [isVisible]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -100,7 +109,8 @@ export const Gallery = () => {
             // Robust YouTube URL to Embed conversion (adding enablejsapi=1)
             const ytMatch = embedUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|watch\?v=|watch\?.+&v=))((\w|-){11})/);
             if (ytMatch && ytMatch[1]) {
-              embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}?enablejsapi=1&autoplay=0&rel=0`;
+              const origin = typeof window !== 'undefined' ? window.location.origin : '*';
+              embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}?enablejsapi=1&autoplay=0&rel=0&origin=${encodeURIComponent(origin)}`;
             } else if (embedUrl.includes("vimeo.com/")) {
                const vimeoId = embedUrl.split("vimeo.com/")[1]?.split(/[?&]/)[0];
                if (vimeoId) embedUrl = `https://player.vimeo.com/video/${vimeoId}?api=1&autoplay=0`;
@@ -110,7 +120,6 @@ export const Gallery = () => {
               <div ref={videoRef} className="mt-6 relative aspect-video rounded-2xl overflow-hidden bg-secondary shadow-warm flex items-center justify-center">
                 <iframe
                   ref={iframeRef}
-                  onLoad={() => setIsIframeLoaded(true)}
                   src={embedUrl}
                   title={heroSource.title || "Video"}
                   className="absolute inset-0 h-full w-full object-cover z-20 pointer-events-auto"

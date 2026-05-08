@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import cow1 from "@/assets/cow-1.jpg";
 import cow2 from "@/assets/cow-2.jpg";
 import cow3 from "@/assets/cow-3.jpg";
@@ -8,6 +8,19 @@ import { api } from "@/lib/api";
 
 export const Gallery = () => {
   const [items, setItems] = useState<any[]>([]);
+  const [videoTriggered, setVideoTriggered] = useState(false);
+  const videoRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setVideoTriggered(true);
+      },
+      { threshold: 0.3 }
+    );
+    if (videoRef.current) observer.observe(videoRef.current);
+    return () => observer.disconnect();
+  }, [items]);
 
   useEffect(() => {
     api.getGallery()
@@ -67,22 +80,28 @@ export const Gallery = () => {
             // Robust YouTube URL to Embed conversion
             const ytMatch = embedUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|watch\?v=|watch\?.+&v=))((\w|-){11})/);
             if (ytMatch && ytMatch[1]) {
-              embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}`;
+              embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&mute=1`;
             } else if (embedUrl.includes("vimeo.com/")) {
                const vimeoId = embedUrl.split("vimeo.com/")[1]?.split(/[?&]/)[0];
-               if (vimeoId) embedUrl = `https://player.vimeo.com/video/${vimeoId}`;
+               if (vimeoId) embedUrl = `https://player.vimeo.com/video/${vimeoId}?autoplay=1&muted=1`;
             }
 
             return (
-              <div className="mt-6 relative aspect-video rounded-2xl overflow-hidden bg-secondary shadow-warm flex items-center justify-center">
-                <iframe
-                  src={embedUrl}
-                  title={heroSource.title || "Video"}
-                  className="absolute inset-0 h-full w-full object-cover z-20 pointer-events-auto"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
+              <div ref={videoRef} className="mt-6 relative aspect-video rounded-2xl overflow-hidden bg-secondary shadow-warm flex items-center justify-center">
+                {videoTriggered ? (
+                  <iframe
+                    src={embedUrl}
+                    title={heroSource.title || "Video"}
+                    className="absolute inset-0 h-full w-full object-cover z-20 pointer-events-auto"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                    <div className="animate-pulse w-16 h-16 rounded-full bg-primary/40" />
+                  </div>
+                )}
               </div>
             )
           }

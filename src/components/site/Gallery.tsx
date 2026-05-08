@@ -14,7 +14,7 @@ export const Gallery = () => {
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) setVideoTriggered(true);
+        setVideoTriggered(entry.isIntersecting);
       },
       { threshold: 0.3 }
     );

@@ -40,12 +40,7 @@ export const Gallery = () => {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
-          {items.map((it, i) => {
-            const isVid = /youtube\.com|youtu\.be|vimeo\.com/i.test(it.url);
-            let embedUrl = it.url;
-            if (isVid && it.url.includes("watch?v=")) embedUrl = it.url.replace("watch?v=", "embed/");
-            else if (isVid && it.url.includes("youtu.be/")) embedUrl = it.url.replace("youtu.be/", "youtube.com/embed/");
-
+          {items.filter(it => !/(youtube\.com|youtu\.be|vimeo\.com)/i.test(it.url)).map((it, i) => {
             return (
             <div
               key={i}
@@ -53,37 +48,49 @@ export const Gallery = () => {
                 i === 0 ? "col-span-2 row-span-2 md:col-span-2 md:row-span-2 aspect-[4/3] md:aspect-square" : "aspect-square"
               }`}
             >
-              {isVid ? (
+              <img
+                src={it.url}
+                alt={it.title}
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-cover group-hover:scale-110 transition-transform duration-700 pointer-events-none"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-secondary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            </div>
+          )})}
+        </div>
+
+        {(() => {
+          const heroSource = items.find(it => /(youtube\.com|youtu\.be|vimeo\.com)/i.test(it.url));
+          if (heroSource) {
+            let embedUrl = heroSource.url;
+            if (embedUrl.includes("watch?v=")) embedUrl = embedUrl.replace("watch?v=", "embed/");
+            else if (embedUrl.includes("youtu.be/")) embedUrl = embedUrl.replace("youtu.be/", "youtube.com/embed/");
+
+            return (
+              <div className="mt-6 relative aspect-video rounded-2xl overflow-hidden bg-secondary shadow-warm flex items-center justify-center">
                 <iframe
                   src={embedUrl}
-                  title={it.title || "Video"}
+                  title={heroSource.title || "Video"}
                   className="absolute inset-0 h-full w-full object-cover z-20 pointer-events-auto"
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 />
-              ) : (
-                <>
-                  <img
-                    src={it.url}
-                    alt={it.title}
-                    loading="lazy"
-                    className="absolute inset-0 h-full w-full object-cover group-hover:scale-110 transition-transform duration-700 pointer-events-none"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-secondary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                </>
-              )}
-            </div>
-          )})}
-        </div>
+              </div>
+            )
+          }
 
-        <div className="mt-6 relative aspect-video rounded-2xl overflow-hidden bg-secondary shadow-warm flex items-center justify-center">
-          <img src={heroImg} alt="Video preview of gaushala life" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-70" />
-          <button className="relative z-10 h-20 w-20 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-glow animate-float hover:scale-110 transition-smooth">
-            <Play className="h-8 w-8 ml-1" />
-          </button>
-          <div className="absolute bottom-4 left-4 text-primary-foreground font-display text-lg drop-shadow">A day at our gaushala</div>
-        </div>
+          return (
+            <div className="mt-6 relative aspect-video rounded-2xl overflow-hidden bg-secondary shadow-warm flex items-center justify-center">
+              <img src={heroImg} alt="Video preview of gaushala life" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-70" />
+              <button className="relative z-10 h-20 w-20 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-glow animate-float hover:scale-110 transition-smooth cursor-default pointer-events-none fade-in">
+                <Play className="h-8 w-8 ml-1" />
+              </button>
+              <div className="absolute bottom-4 left-4 text-primary-foreground font-display text-lg drop-shadow">A day at our gaushala</div>
+            </div>
+          )
+        })()}
+
       </div>
     </section>
   );

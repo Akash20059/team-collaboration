@@ -63,8 +63,15 @@ export const Gallery = () => {
           const heroSource = items.find(it => /(youtube\.com|youtu\.be|vimeo\.com)/i.test(it.url));
           if (heroSource) {
             let embedUrl = heroSource.url;
-            if (embedUrl.includes("watch?v=")) embedUrl = embedUrl.replace("watch?v=", "embed/");
-            else if (embedUrl.includes("youtu.be/")) embedUrl = embedUrl.replace("youtu.be/", "youtube.com/embed/");
+            
+            // Robust YouTube URL to Embed conversion
+            const ytMatch = embedUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|watch\?v=|watch\?.+&v=))((\w|-){11})/);
+            if (ytMatch && ytMatch[1]) {
+              embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}`;
+            } else if (embedUrl.includes("vimeo.com/")) {
+               const vimeoId = embedUrl.split("vimeo.com/")[1]?.split(/[?&]/)[0];
+               if (vimeoId) embedUrl = `https://player.vimeo.com/video/${vimeoId}`;
+            }
 
             return (
               <div className="mt-6 relative aspect-video rounded-2xl overflow-hidden bg-secondary shadow-warm flex items-center justify-center">

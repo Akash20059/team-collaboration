@@ -60,4 +60,10 @@ export const api = {
 
   // ─── Stats ────────────────────────────────────────────────────────────────
   getStats: () => apiFetch<any>("/stats"),
+
+  // ─── Gallery ──────────────────────────────────────────────────────────────
+  getGallery: () => apiFetch<any[]>("/gallery"),
+  createGalleryImage: (data: any) => apiFetch<any>("/gallery", { method: "POST", body: JSON.stringify(data) }),
+  updateGalleryImage: (id: string, data: any) => apiFetch<any>(`/gallery/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteGalleryImage: (id: string) => apiFetch<any>(`/gallery/${id}`, { method: "DELETE" }),
 };

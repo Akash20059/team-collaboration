@@ -23,6 +23,7 @@ import AdminProducts from "./pages/admin/AdminProducts.tsx";
 import AdminCows from "./pages/admin/AdminCows.tsx";
 import AdminBlog from "./pages/admin/AdminBlog.tsx";
 import AdminDonors from "./pages/admin/AdminDonors.tsx";
+import { AdminGallery } from "./pages/admin/AdminGallery.tsx";
 import AdminOrders from "./pages/admin/AdminOrders.tsx";
 import DonatePage from "./pages/DonatePage.tsx";
 import ProductsPage from "./pages/ProductsPage.tsx";
@@ -62,6 +63,7 @@ const App = () => (
               <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
               <Route path="/admin/cows" element={<AdminRoute><AdminCows /></AdminRoute>} />
               <Route path="/admin/blog" element={<AdminRoute><AdminBlog /></AdminRoute>} />
+              <Route path="/admin/gallery" element={<AdminRoute><AdminGallery /></AdminRoute>} />
               <Route path="/admin/donors" element={<AdminRoute><AdminDonors /></AdminRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>

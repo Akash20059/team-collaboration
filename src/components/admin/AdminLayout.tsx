@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, FileText, LogOut, Menu, Heart, ShoppingBag } from "lucide-react";
+import { LayoutDashboard, Package, FileText, LogOut, Menu, Heart, ShoppingBag, Image as ImageIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -35,6 +35,7 @@ const navItems = [
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/cows", label: "Our Cows", icon: CustomCowIcon },
   { to: "/admin/blog", label: "Updates", icon: FileText },
+  { to: "/admin/gallery", label: "Gallery", icon: ImageIcon },
   { to: "/admin/donors", label: "Donators", icon: Heart },
 ];
 

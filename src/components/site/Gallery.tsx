@@ -1,16 +1,35 @@
+import { useEffect, useState } from "react";
 import cow1 from "@/assets/cow-1.jpg";
 import cow2 from "@/assets/cow-2.jpg";
 import cow3 from "@/assets/cow-3.jpg";
 import heroImg from "@/assets/hero-cow.jpg";
 import { Play } from "lucide-react";
+import { api } from "@/lib/api";
 
 export const Gallery = () => {
-  const items = [
-    { src: cow1, alt: "Brown Malenadu Gidda calf in green pasture" },
-    { src: cow2, alt: "Black indigenous cow with calf in gaushala" },
-    { src: heroImg, alt: "Sacred cow at Western Ghats temple" },
-    { src: cow3, alt: "White humped cow grazing in Western Ghats" },
-  ];
+  const [items, setItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.getGallery()
+      .then(res => {
+        if (res && res.length > 0) setItems(res);
+        else setItems([
+          { url: cow1, title: "Brown Malenadu Gidda calf in green pasture" },
+          { url: cow2, title: "Black indigenous cow with calf in gaushala" },
+          { url: heroImg, title: "Sacred cow at Western Ghats temple" },
+          { url: cow3, title: "White humped cow grazing in Western Ghats" },
+        ]);
+      })
+      .catch(() => {
+        setItems([
+          { url: cow1, title: "Brown Malenadu Gidda calf in green pasture" },
+          { url: cow2, title: "Black indigenous cow with calf in gaushala" },
+          { url: heroImg, title: "Sacred cow at Western Ghats temple" },
+          { url: cow3, title: "White humped cow grazing in Western Ghats" },
+        ]);
+      });
+  }, []);
+
   return (
     <section className="section-pad bg-gradient-warm">
       <div className="container-page">
@@ -25,12 +44,12 @@ export const Gallery = () => {
             <div
               key={i}
               className={`group relative overflow-hidden rounded-xl shadow-soft hover:shadow-warm transition-smooth ${
-                i === 0 ? "col-span-2 row-span-2 md:col-span-2 md:row-span-2 aspect-square" : "aspect-square"
+                i === 0 ? "col-span-2 row-span-2 md:col-span-2 md:row-span-2 aspect-[4/3] md:aspect-square" : "aspect-square"
               }`}
             >
               <img
-                src={it.src}
-                alt={it.alt}
+                src={it.url}
+                alt={it.title}
                 loading="lazy"
                 className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700"
               />

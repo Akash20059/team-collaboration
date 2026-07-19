@@ -6,7 +6,7 @@ const { supabase } = require("../supabase");
 router.get("/", async (req, res) => {
   const { data, error } = await supabase
     .from("blog_posts")
-    .select("*")
+    .select("id, title, category, post_date, content, created_at, updated_at")
     .order("post_date", { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);

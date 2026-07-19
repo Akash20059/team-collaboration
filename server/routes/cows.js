@@ -6,7 +6,7 @@ const { supabase } = require("../supabase");
 router.get("/", async (req, res) => {
   const { data, error } = await supabase
     .from("cows")
-    .select("*")
+    .select("id, cow_number, name, age, weight_kg, breed, milk_yield_litres, health_status, is_adopted, notes, created_at, updated_at")
     .order("cow_number", { ascending: true });
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);

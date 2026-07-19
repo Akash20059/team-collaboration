@@ -17,14 +17,29 @@ import { addCustomerOrder } from "@/lib/adminStore";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
-import { api } from "@/lib/api";
-import { useRazorpay } from "@/hooks/useRazorpay";
 
 /* ─── Device detection ─── */
 const isMobileDevice = () =>
   /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
     navigator.userAgent
   );
+
+/* ─── UPI app definitions ─── */
+type UpiApp = { id: string; name: string; scheme: string; bg: string; initial: string };
+
+const RECOMMENDED_APPS: UpiApp[] = [
+  { id: "bhim",   name: "BHIM UPI",       scheme: "upi",     bg: "bg-orange-600",  initial: "B"  },
+  { id: "paytm",  name: "Paytm UPI",      scheme: "paytmmp", bg: "bg-sky-500",     initial: "P"  },
+  { id: "gpay",   name: "Google Pay UPI", scheme: "tez",     bg: "bg-emerald-600", initial: "G"  },
+];
+
+const OTHER_APPS: UpiApp[] = [
+  { id: "phonepe",   name: "PhonePe UPI",   scheme: "phonepe", bg: "bg-violet-700",  initial: "Ph" },
+  { id: "amazonpay", name: "Amazon Pay UPI",scheme: "upi",     bg: "bg-slate-800",   initial: "A"  },
+  { id: "navi",      name: "Navi UPI",      scheme: "upi",     bg: "bg-indigo-700",  initial: "N"  },
+];
+
+const ALL_APPS = [...RECOMMENDED_APPS, ...OTHER_APPS];
 
 /* ─── Validation ─── */
 const addressSchema = z.object({
@@ -33,6 +48,26 @@ const addressSchema = z.object({
   address_line1:z.string().trim().min(5, "Enter your delivery address"),
   pincode:      z.string().regex(/^[0-9]{6}$/, "Enter a 6-digit pincode"),
 });
+
+/* ─── UPI app row ─── */
+function AppRow({ app, active, onSelect }: { app: UpiApp; active: boolean; onSelect: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors border-b border-border/50 last:border-0 ${
+        active ? "bg-primary/5" : "hover:bg-muted/50"
+      }`}
+    >
+      <div className={`h-10 w-10 rounded-lg ${app.bg} text-white grid place-items-center text-[11px] font-bold shrink-0`}>
+        {app.initial}
+      </div>
+      <span className="flex-1 font-medium text-[15px] text-foreground">{app.name}</span>
+      {active && <div className="h-2 w-2 rounded-full bg-primary" />}
+      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+    </button>
+  );
+}
 
 /* ─── Main component ─── */
 const Cart = () => {
@@ -49,8 +84,9 @@ const Cart = () => {
   });
   const [deliveryOpen,  setDeliveryOpen]  = useState(false);
   const [billOpen,      setBillOpen]      = useState(false);
+  const [paymentOpen,   setPaymentOpen]   = useState(false);
+  const [selectedApp,   setSelectedApp]   = useState<string>("gpay");
   const [busy,          setBusy]          = useState(false);
-  const isRazorpayLoaded = useRazorpay();
   const isMobile = isMobileDevice();
 
   useEffect(() => {
@@ -85,115 +121,74 @@ const Cart = () => {
       if (!deliveryOpen) setDeliveryOpen(true);
       return;
     }
-    if (!isRazorpayLoaded) {
-      toast.error("Payment gateway is loading. Please try again in a moment.");
-      return;
-    }
+    // On desktop we use QR code flow; on mobile we use UPI intent flow
+    const effectiveAppId = isMobile ? selectedApp : "desktop_qr";
+    const app = isMobile ? ALL_APPS.find((a) => a.id === selectedApp) : { id: "desktop_qr", name: "UPI QR Code" };
+    if (!app) { toast.error("Please choose a UPI app"); return; }
 
     setBusy(true);
     try {
-      // 1. Create Razorpay order on backend
-      const orderData = await api.createPaymentOrder({ amount: total });
+      const orderItems = items.map((i) => ({
+        id: i.id, name: i.name, price: i.price, quantity: i.quantity, image_url: i.image_url,
+      }));
 
-      const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_TFKXsL3y6jPboO",
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: "Shreemata Goumandira",
-        description: "Store Purchase",
-        order_id: orderData.id,
-        handler: async function (response: any) {
-          try {
-            // 2. Verify payment
-            const verifyRes = await api.verifyPayment({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature
-            });
+      const { data, error } = await supabase
+        .from("orders")
+        .insert({
+          customer_name:    form.full_name,
+          customer_mobile:  form.mobile,
+          address_line1:    form.address_line1,
+          address_line2:    form.address_line2 || null,
+          city:             form.city || "—",
+          state:            form.state || "—",
+          pincode:          form.pincode,
+          landmark:         form.landmark || null,
+          items:            orderItems,
+          subtotal,
+          delivery_charge:  delivery,
+          discount:         Math.max(0, mrpTotal - subtotal),
+          total_amount:     total,
+          payment_method:   "upi",
+          payment_reference: isMobile ? `Opened ${app.name}` : "Desktop QR pending",
+        })
+        .select("order_id")
+        .single();
 
-            if (verifyRes.success) {
-              toast.success("Payment successful!");
-              
-              // 3. Save order to DB
-              const orderItems = items.map((i) => ({
-                id: i.id, name: i.name, price: i.price, quantity: i.quantity, image_url: i.image_url,
-              }));
+      if (error) throw error;
+      saveAddress(form);
+      addMyOrderId(data.order_id);
 
-              const { data, error } = await supabase
-                .from("orders")
-                .insert({
-                  customer_name:    form.full_name,
-                  customer_mobile:  form.mobile,
-                  address_line1:    form.address_line1,
-                  address_line2:    form.address_line2 || null,
-                  city:             form.city || "—",
-                  state:            form.state || "—",
-                  pincode:          form.pincode,
-                  landmark:         form.landmark || null,
-                  items:            orderItems,
-                  subtotal,
-                  delivery_charge:  delivery,
-                  discount:         Math.max(0, mrpTotal - subtotal),
-                  total_amount:     total,
-                  payment_method:   "razorpay",
-                  payment_reference: response.razorpay_payment_id,
-                })
-                .select("order_id")
-                .single();
-
-              if (error) throw error;
-              saveAddress(form);
-              addMyOrderId(data.order_id);
-
-              addCustomerOrder({
-                id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
-                order_id: data.order_id,
-                customer_name: form.full_name,
-                mobile: form.mobile,
-                address_line1: form.address_line1,
-                city: form.city || "—",
-                state: form.state || "—",
-                pincode: form.pincode,
-                items: items.map((i) => ({ name: i.name, qty: i.quantity, price: i.price })),
-                total_amount: total,
-                delivery_charge: delivery,
-                status: "pending",
-                placed_at: new Date().toISOString(),
-              });
-
-              clear();
-              nav(`/order-confirmed/${data.order_id}`);
-            } else {
-              toast.error("Payment verification failed");
-              setBusy(false);
-            }
-          } catch (err) {
-            toast.error("Payment verification failed");
-            setBusy(false);
-          }
-        },
-        prefill: {
-          name: form.full_name,
-          contact: form.mobile,
-        },
-        theme: {
-          color: "#f97316"
-        }
-      };
-
-      const rzp1 = new (window as any).Razorpay(options);
-      rzp1.on('payment.failed', function (response: any) {
-        toast.error("Payment failed: " + response.error.description);
-        setBusy(false);
+      // ── Save to admin localStorage order store ──
+      addCustomerOrder({
+        id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+        order_id: data.order_id,
+        customer_name: form.full_name,
+        mobile: form.mobile,
+        address_line1: form.address_line1,
+        city: form.city || "—",
+        state: form.state || "—",
+        pincode: form.pincode,
+        items: items.map((i) => ({ name: i.name, qty: i.quantity, price: i.price })),
+        total_amount: total,
+        delivery_charge: delivery,
+        status: "pending",
+        placed_at: new Date().toISOString(),
       });
-      rzp1.open();
 
+      clear();
+
+      // Go to payment page; UPI intent (mobile) or QR code (desktop)
+      nav(`/checkout/pay/${data.order_id}`, {
+        state: { appId: effectiveAppId, appName: app.name, total },
+      });
     } catch (err: any) {
-      toast.error(err.message || "Could not initialize payment");
+      toast.error(err.message || "Could not place order");
+    } finally {
       setBusy(false);
     }
   };
 
+  const activeApp = ALL_APPS.find((a) => a.id === selectedApp)!;
   const hasAddress = form.full_name && form.address_line1 && form.mobile && form.pincode;
 
   return (
@@ -418,15 +413,28 @@ const Cart = () => {
       {/* ── Sticky bottom bar ── */}
       <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-border shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
         <div className="container-page max-w-2xl flex items-center gap-2 py-2.5">
-          {/* Left: Pay Securely */}
-          <div className="flex flex-col items-start min-w-0 flex-1 px-1 py-1">
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-              Payment Gateway
-            </span>
-            <span className="text-[13px] font-semibold text-secondary truncate leading-tight flex items-center gap-1">
-              🔒 Razorpay Secured
-            </span>
-          </div>
+          {/* Left: pay using ── mobile shows app picker, desktop shows QR label */}
+          {isMobile ? (
+            <button
+              type="button"
+              onClick={() => setPaymentOpen(true)}
+              className="flex flex-col items-start min-w-0 flex-1 px-1 py-1 rounded-lg hover:bg-muted/40 transition-colors"
+            >
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold flex items-center gap-0.5">
+                Pay using <ChevronUp className="h-3 w-3" />
+              </span>
+              <span className="text-[13px] font-semibold text-secondary truncate leading-tight">{activeApp.name}</span>
+            </button>
+          ) : (
+            <div className="flex flex-col items-start min-w-0 flex-1 px-1 py-1">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+                Pay via
+              </span>
+              <span className="text-[13px] font-semibold text-secondary truncate leading-tight flex items-center gap-1">
+                📱 UPI QR Code
+              </span>
+            </div>
+          )}
 
           {/* Divider */}
           <div className="w-px h-9 bg-border/70 shrink-0" />
@@ -451,7 +459,55 @@ const Cart = () => {
         </div>
       </div>
 
+      {/* ── Payment method sheet (slides up from bottom) ── */}
+      <Sheet open={paymentOpen} onOpenChange={setPaymentOpen}>
+        <SheetContent
+          side="bottom"
+          className="p-0 rounded-t-2xl max-h-[85vh] overflow-y-auto"
+        >
+          {/* Sheet header */}
+          <div className="px-5 pt-5 pb-3 border-b border-border/60">
+            <div className="w-10 h-1 bg-muted rounded-full mx-auto mb-4" />
+            <p className="text-[13px] text-muted-foreground font-medium">
+              Bill total: <span className="font-bold text-secondary">{formatINR(total)}</span>
+            </p>
+          </div>
 
+          {/* Recommended */}
+          <div className="px-4 pt-4">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-2 px-1">
+              Recommended
+            </p>
+            <div className="rounded-xl border border-border/70 overflow-hidden bg-white">
+              {RECOMMENDED_APPS.map((app) => (
+                <AppRow
+                  key={app.id}
+                  app={app}
+                  active={selectedApp === app.id}
+                  onSelect={() => { setSelectedApp(app.id); setPaymentOpen(false); }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Other UPI apps */}
+          <div className="px-4 pt-4 pb-6">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-2 px-1">
+              Pay by any UPI app
+            </p>
+            <div className="rounded-xl border border-border/70 overflow-hidden bg-white">
+              {OTHER_APPS.map((app) => (
+                <AppRow
+                  key={app.id}
+                  app={app}
+                  active={selectedApp === app.id}
+                  onSelect={() => { setSelectedApp(app.id); setPaymentOpen(false); }}
+                />
+              ))}
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
     </div>
   );

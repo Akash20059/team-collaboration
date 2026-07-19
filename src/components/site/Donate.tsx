@@ -5,20 +5,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, Heart, Loader2, ClipboardCopy } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
+import { CheckCircle2, Heart, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useRazorpay } from "@/hooks/useRazorpay";
+import { api } from "@/lib/api";
 
-const UPI_ID = "337437337963378@cnrb";
-const UPI_NAME = "Shreemata Goumandira";
 const ONE_TIME_AMOUNT = 12000;
 const MONTHLY_PLANS = [1000, 2000, 3000, 6000];
 
-const buildUpiUrl = (amount: number) =>
-  `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_NAME)}&am=${amount}&cu=INR&tn=${encodeURIComponent("Donation to Shreemata Goumandira")}`;
-
-const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 const monthsToComplete = (monthly: number) => Math.ceil(ONE_TIME_AMOUNT / monthly);
 
 const emptyOneTimeForm = {
@@ -39,6 +34,7 @@ const emptyMonthlyForm = {
 };
 
 export const Donate = () => {
+  const isRazorpayLoaded = useRazorpay();
   const [tab, setTab] = useState<"onetime" | "monthly">("onetime");
   const [selectedMonthly, setSelectedMonthly] = useState<number>(1000);
 
@@ -49,16 +45,61 @@ export const Donate = () => {
   const [monthlyForm, setMonthlyForm] = useState(emptyMonthlyForm);
   const [saving, setSaving] = useState(false);
 
-  // QR dialog (desktop only — shown after form submit)
-  const [showQRDialog, setShowQRDialog] = useState(false);
-  const [qrAmount, setQrAmount] = useState(0);
+  const initRazorpay = async (amount: number, onSuccess: () => void, customerName: string, customerPhone: string, customerEmail: string) => {
+    if (!isRazorpayLoaded) {
+      toast.error("Payment gateway is loading. Please wait.");
+      setSaving(false);
+      return;
+    }
 
-  const payOrShowQR = (amount: number) => {
-    if (isMobile()) {
-      window.location.href = buildUpiUrl(amount);
-    } else {
-      setQrAmount(amount);
-      setShowQRDialog(true);
+    try {
+      const orderData = await api.createPaymentOrder({ amount });
+      
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "Shreemata Goumandira",
+        description: "Donation",
+        order_id: orderData.id,
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await api.verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            });
+            
+            if (verifyRes.success) {
+              onSuccess();
+            } else {
+              toast.error("Payment verification failed");
+              setSaving(false);
+            }
+          } catch (err) {
+            toast.error("Payment verification failed");
+            setSaving(false);
+          }
+        },
+        prefill: {
+          name: customerName,
+          contact: customerPhone,
+          email: customerEmail,
+        },
+        theme: {
+          color: "#f97316"
+        }
+      };
+
+      const rzp1 = new (window as any).Razorpay(options);
+      rzp1.on('payment.failed', function (response: any) {
+        toast.error("Payment failed: " + response.error.description);
+        setSaving(false);
+      });
+      rzp1.open();
+    } catch (err: any) {
+      toast.error(err.message || "Could not initialize payment");
+      setSaving(false);
     }
   };
 
@@ -79,31 +120,34 @@ export const Donate = () => {
     }
 
     setSaving(true);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).from("one_time_donations").insert({
-      name: f.name.trim(),
-      email: f.email.trim() || null,
-      phone: f.phone.trim() || null,
-      address_line1: f.address_line1.trim(),
-      city: f.city.trim(),
-      state: f.state.trim(),
-      pincode: f.pincode.trim(),
-      message: f.message.trim() || null,
-      amount: ONE_TIME_AMOUNT,
-      donated_at: new Date().toISOString().slice(0, 10),
-    });
-    setSaving(false);
+    
+    initRazorpay(ONE_TIME_AMOUNT, async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).from("one_time_donations").insert({
+        name: f.name.trim(),
+        email: f.email.trim() || null,
+        phone: f.phone.trim() || null,
+        address_line1: f.address_line1.trim(),
+        city: f.city.trim(),
+        state: f.state.trim(),
+        pincode: f.pincode.trim(),
+        message: f.message.trim() || null,
+        amount: ONE_TIME_AMOUNT,
+        donated_at: new Date().toISOString().slice(0, 10),
+      });
 
-    if (error) {
-      console.error("Supabase error:", error);
-      toast.error(`Save failed: ${error.message ?? "Unknown error"}`);
-      return;
-    }
+      setSaving(false);
 
-    toast.success("🙏 Thank you! Your details are saved. Please complete the payment.");
-    setShowOneTimeForm(false);
-    setOneTimeForm(emptyOneTimeForm);
-    payOrShowQR(ONE_TIME_AMOUNT);
+      if (error) {
+        console.error("Supabase error:", error);
+        toast.error(`Save failed: ${error.message ?? "Unknown error"}`);
+        return;
+      }
+
+      toast.success("🙏 Thank you! Your donation was successful.");
+      setShowOneTimeForm(false);
+      setOneTimeForm(emptyOneTimeForm);
+    }, f.name.trim(), f.phone.trim(), f.email.trim());
   };
 
   // ─── Monthly Flow ─────────────────────────────────────────────────────────
@@ -124,27 +168,29 @@ export const Donate = () => {
     const reminderDate = new Date(dueDate);
     reminderDate.setDate(reminderDate.getDate() - 1);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).from("monthly_donors").insert({
-      name: f.name.trim(),
-      email: f.email.trim() || null,
-      phone: f.phone.trim() || null,
-      amount: selectedMonthly,
-      last_payment_date: today.toISOString().slice(0, 10),
-      next_reminder_date: reminderDate.toISOString().slice(0, 10),
-    });
-    setSaving(false);
+    initRazorpay(selectedMonthly, async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).from("monthly_donors").insert({
+        name: f.name.trim(),
+        email: f.email.trim() || null,
+        phone: f.phone.trim() || null,
+        amount: selectedMonthly,
+        last_payment_date: today.toISOString().slice(0, 10),
+        next_reminder_date: reminderDate.toISOString().slice(0, 10),
+      });
 
-    if (error) {
-      console.error("Supabase error:", error);
-      toast.error(`Save failed: ${error.message ?? "Unknown error"}`);
-      return;
-    }
+      setSaving(false);
 
-    toast.success("✅ Registered! We'll remind you 1 day before each month 🙏");
-    setShowMonthlyForm(false);
-    setMonthlyForm(emptyMonthlyForm);
-    payOrShowQR(selectedMonthly);
+      if (error) {
+        console.error("Supabase error:", error);
+        toast.error(`Save failed: ${error.message ?? "Unknown error"}`);
+        return;
+      }
+
+      toast.success("✅ Registered! We'll remind you 1 day before each month 🙏");
+      setShowMonthlyForm(false);
+      setMonthlyForm(emptyMonthlyForm);
+    }, f.name.trim(), f.phone.trim(), f.email.trim());
   };
 
   return (
@@ -410,34 +456,6 @@ export const Donate = () => {
         </DialogContent>
       </Dialog>
 
-      {/* QR Dialog (shown after form submit on desktop) */}
-      <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="font-display text-secondary text-center">Scan to Pay 🙏</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col items-center gap-4">
-            <div className="rounded-2xl bg-gradient-saffron p-1 shadow-warm">
-              <div className="rounded-[calc(1rem-4px)] bg-background p-4">
-                <QRCodeSVG value={buildUpiUrl(qrAmount)} size={200} bgColor="#ffffff" fgColor="#1a1a1a" level="M" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold text-primary">₹{qrAmount.toLocaleString("en-IN")}</p>
-            <div className="flex items-center gap-2 bg-muted rounded-xl px-4 py-2 w-full justify-between">
-              <span className="font-mono text-sm">{UPI_ID}</span>
-              <button
-                onClick={() => { navigator.clipboard.writeText(UPI_ID); toast.success("UPI ID copied!"); }}
-                className="text-muted-foreground hover:text-primary"
-              >
-                <ClipboardCopy className="h-4 w-4" />
-              </button>
-            </div>
-            <Button variant="hero" className="w-full" onClick={() => { window.location.href = buildUpiUrl(qrAmount); }}>
-              Open UPI App Instead
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };

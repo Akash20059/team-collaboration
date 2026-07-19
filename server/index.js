@@ -19,6 +19,7 @@ app.use("/api/orders",   require("./routes/orders"));
 app.use("/api/auth",     require("./routes/auth"));
 app.use("/api/stats",    require("./routes/stats"));
 app.use("/api/gallery",  require("./routes/gallery"));
+app.use("/api/payments", require("./routes/payments"));
 
 // ─── Health check ───────────────────────────────────────────────────────────
 app.get("/api/health", (req, res) => res.json({ status: "ok", time: new Date().toISOString() }));

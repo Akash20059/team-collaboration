@@ -14,15 +14,17 @@ import { SavedAddress } from "@/lib/savedAddress";
 import { computeDelivery, formatINR, SITE_CONFIG } from "@/lib/config";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { Copy, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { useRazorpay } from "@/hooks/useRazorpay";
 
 const ADDR_KEY = "goumandira_checkout_addr";
 
 const CheckoutPayment = () => {
   const nav = useNavigate();
+  const isRazorpayLoaded = useRazorpay();
   const { items, subtotal, mrpTotal, clear } = useCart();
   const [address, setAddress] = useState<SavedAddress | null>(null);
-  const [method, setMethod] = useState<"upi" | "bank_transfer" | "cod">("upi");
+  const [method, setMethod] = useState<"razorpay" | "cod">("razorpay");
   const [paymentRef, setPaymentRef] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -42,40 +44,31 @@ const CheckoutPayment = () => {
     setAddress(JSON.parse(raw));
   }, []);
 
-  const upiLink = `upi://pay?pa=${encodeURIComponent(SITE_CONFIG.upiId)}&pn=${encodeURIComponent(SITE_CONFIG.upiName)}&am=${total}&cu=INR&tn=${encodeURIComponent("Goumandira Order")}`;
-
-  const onConfirm = async () => {
-    if (!address) return;
-    if (method === "upi" && !paymentRef.trim()) {
-      toast.error("Please enter UTR / Transaction reference");
-      return;
-    }
-    setBusy(true);
+  const handleCreateOrder = async (paymentRef: string | null = null) => {
     try {
       const orderItems = items.map((i) => ({
         id: i.id, name: i.name, price: i.price, quantity: i.quantity, image_url: i.image_url,
       }));
       const data = await api.createOrder({
-        customer_name: address.full_name,
-        customer_mobile: address.mobile,
-        address_line1: address.address_line1,
-        address_line2: address.address_line2 || null,
-        city: address.city,
-        state: address.state,
-        pincode: address.pincode,
-        landmark: address.landmark || null,
+        customer_name: address!.full_name,
+        customer_mobile: address!.mobile,
+        address_line1: address!.address_line1,
+        address_line2: address!.address_line2 || null,
+        city: address!.city,
+        state: address!.state,
+        pincode: address!.pincode,
+        landmark: address!.landmark || null,
         items: orderItems,
         subtotal,
         delivery_charge: delivery,
         discount: Math.max(0, mrpTotal - subtotal),
         total_amount: total,
         payment_method: method,
-        payment_reference: method === "upi" ? paymentRef.trim() : null,
+        payment_reference: paymentRef,
       });
 
-
       // WhatsApp notify owner
-      const msg = `🙏 New Order: ${data.order_id}%0A👤 ${address.full_name} (${address.mobile})%0A📍 ${address.city}, ${address.state} - ${address.pincode}%0A💰 Total: ${formatINR(total)}%0A💳 ${method.toUpperCase()}${method === "upi" ? ` (UTR: ${paymentRef})` : ""}%0A%0AItems:%0A${items.map((i) => `• ${i.name} x ${i.quantity}`).join("%0A")}`;
+      const msg = `🙏 New Order: ${data.order_id}%0A👤 ${address!.full_name} (${address!.mobile})%0A📍 ${address!.city}, ${address!.state} - ${address!.pincode}%0A💰 Total: ${formatINR(total)}%0A💳 ${method.toUpperCase()}${paymentRef ? ` (Ref: ${paymentRef})` : ""}%0A%0AItems:%0A${items.map((i) => `• ${i.name} x ${i.quantity}`).join("%0A")}`;
       window.open(`https://wa.me/${SITE_CONFIG.whatsappNumber}?text=${msg}`, "_blank");
 
       clear();
@@ -85,6 +78,74 @@ const CheckoutPayment = () => {
       toast.error(err.message || "Could not place order");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const onConfirm = async () => {
+    if (!address) return;
+    setBusy(true);
+
+    if (method === "cod") {
+      await handleCreateOrder(null);
+      return;
+    }
+
+    if (method === "razorpay") {
+      if (!isRazorpayLoaded) {
+        toast.error("Payment gateway is loading. Please try again in a moment.");
+        setBusy(false);
+        return;
+      }
+
+      try {
+        const orderData = await api.createPaymentOrder({ amount: total });
+        
+        const options = {
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+          amount: orderData.amount,
+          currency: orderData.currency,
+          name: "Shreemata Goumandira",
+          description: "Store Purchase",
+          order_id: orderData.id,
+          handler: async function (response: any) {
+            try {
+              const verifyRes = await api.verifyPayment({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              });
+              
+              if (verifyRes.success) {
+                toast.success("Payment successful!");
+                await handleCreateOrder(response.razorpay_payment_id);
+              } else {
+                toast.error("Payment verification failed");
+                setBusy(false);
+              }
+            } catch (err) {
+              toast.error("Payment verification failed");
+              setBusy(false);
+            }
+          },
+          prefill: {
+            name: address.full_name,
+            contact: address.mobile,
+          },
+          theme: {
+            color: "#f97316" // primary orange
+          }
+        };
+
+        const rzp1 = new (window as any).Razorpay(options);
+        rzp1.on('payment.failed', function (response: any) {
+          toast.error("Payment failed: " + response.error.description);
+          setBusy(false);
+        });
+        rzp1.open();
+      } catch (err: any) {
+        toast.error(err.message || "Could not initialize payment");
+        setBusy(false);
+      }
     }
   };
 
@@ -102,17 +163,10 @@ const CheckoutPayment = () => {
                 <h1 className="font-display text-xl font-bold text-secondary mb-4">Payment Method</h1>
                 <RadioGroup value={method} onValueChange={(v) => setMethod(v as any)} className="space-y-3">
                   <label className="flex items-start gap-3 p-3 border border-border rounded-lg cursor-pointer hover:border-primary">
-                    <RadioGroupItem value="upi" id="upi" className="mt-1" />
+                    <RadioGroupItem value="razorpay" id="razorpay" className="mt-1" />
                     <div className="flex-1">
-                      <p className="font-medium text-secondary">UPI Payment (Recommended)</p>
-                      <p className="text-xs text-muted-foreground">Scan QR or pay to UPI ID, then enter UTR</p>
-                    </div>
-                  </label>
-                  <label className="flex items-start gap-3 p-3 border border-border rounded-lg cursor-pointer hover:border-primary">
-                    <RadioGroupItem value="bank_transfer" id="bank" className="mt-1" />
-                    <div className="flex-1">
-                      <p className="font-medium text-secondary">Bank Transfer</p>
-                      <p className="text-xs text-muted-foreground">NEFT / IMPS / RTGS</p>
+                      <p className="font-medium text-secondary">Pay Online (Razorpay)</p>
+                      <p className="text-xs text-muted-foreground">UPI, Cards, NetBanking, Wallets</p>
                     </div>
                   </label>
                   <label className="flex items-start gap-3 p-3 border border-border rounded-lg cursor-pointer hover:border-primary">
@@ -124,42 +178,6 @@ const CheckoutPayment = () => {
                   </label>
                 </RadioGroup>
               </Card>
-
-              {method === "upi" && (
-                <Card className="p-6 text-center">
-                  <p className="text-sm text-muted-foreground mb-3">Scan to pay {formatINR(total)}</p>
-                  <div className="bg-card p-4 inline-block rounded-lg border border-border">
-                    <QRCodeSVG value={upiLink} size={200} />
-                  </div>
-                  <div className="mt-4 flex items-center justify-center gap-2">
-                    <code className="bg-muted px-3 py-1.5 rounded text-sm">{SITE_CONFIG.upiId}</code>
-                    <button onClick={() => { navigator.clipboard.writeText(SITE_CONFIG.upiId); toast.success("UPI ID copied"); }} className="text-primary hover:bg-primary/10 p-1.5 rounded">
-                      <Copy className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-3">After paying, enter your UTR / Transaction ID below</p>
-                  <div className="mt-4 max-w-sm mx-auto text-left">
-                    <Label htmlFor="utr">UTR / Transaction Reference *</Label>
-                    <Input id="utr" value={paymentRef} onChange={(e) => setPaymentRef(e.target.value)} placeholder="e.g. 412345678901" maxLength={50} />
-                  </div>
-                </Card>
-              )}
-
-              {method === "bank_transfer" && (
-                <Card className="p-6">
-                  <h2 className="font-display font-bold text-secondary mb-3">Bank Account Details</h2>
-                  <dl className="text-sm space-y-2">
-                    <div className="flex justify-between"><dt className="text-muted-foreground">Account Name</dt><dd>{SITE_CONFIG.bankDetails.accountName}</dd></div>
-                    <div className="flex justify-between"><dt className="text-muted-foreground">Account Number</dt><dd className="font-mono">{SITE_CONFIG.bankDetails.accountNumber}</dd></div>
-                    <div className="flex justify-between"><dt className="text-muted-foreground">IFSC</dt><dd className="font-mono">{SITE_CONFIG.bankDetails.ifsc}</dd></div>
-                    <div className="flex justify-between"><dt className="text-muted-foreground">Bank</dt><dd>{SITE_CONFIG.bankDetails.bankName}</dd></div>
-                  </dl>
-                  <div className="mt-4">
-                    <Label htmlFor="utr2">Reference No. *</Label>
-                    <Input id="utr2" value={paymentRef} onChange={(e) => setPaymentRef(e.target.value)} placeholder="Bank transaction ref" maxLength={50} />
-                  </div>
-                </Card>
-              )}
 
               <Button variant="hero" size="lg" className="w-full" onClick={onConfirm} disabled={busy}>
                 {busy && <Loader2 className="animate-spin" />} Confirm Order

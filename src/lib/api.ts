@@ -66,4 +66,10 @@ export const api = {
   createGalleryImage: (data: any) => apiFetch<any>("/gallery", { method: "POST", body: JSON.stringify(data) }),
   updateGalleryImage: (id: string, data: any) => apiFetch<any>(`/gallery/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteGalleryImage: (id: string) => apiFetch<any>(`/gallery/${id}`, { method: "DELETE" }),
+
+  // ─── Payments ─────────────────────────────────────────────────────────────
+  createPaymentOrder: (data: { amount: number; receipt?: string }) => 
+    apiFetch<any>("/payments/create-order", { method: "POST", body: JSON.stringify(data) }),
+  verifyPayment: (data: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => 
+    apiFetch<{ success: boolean; message?: string; error?: string }>("/payments/verify", { method: "POST", body: JSON.stringify(data) }),
 };

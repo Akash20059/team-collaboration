@@ -1,7 +1,7 @@
 // Site-wide config (edit values via admin or here)
 export const SITE_CONFIG = {
-  upiId: "337437337963378@cnrb",
-  upiName: "Shreemata Goumandira",
+  upiId: "9353564002@ybl",
+  upiName: "ADHOKSHA JAVALI",
   whatsappNumber: "919110268570", // International format (no +)
   bankDetails: {
     accountName: "Shreemata Goumandira",

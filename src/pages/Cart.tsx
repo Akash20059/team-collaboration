@@ -135,8 +135,8 @@ const Cart = () => {
                   delivery_charge:  delivery,
                   discount:         Math.max(0, mrpTotal - subtotal),
                   total_amount:     total,
-                  payment_method:   "razorpay",
-                  payment_reference: response.razorpay_payment_id,
+                  payment_method:   "upi",
+                  payment_reference: "rzp_" + response.razorpay_payment_id,
                 })
                 .select("order_id")
                 .single();
@@ -167,8 +167,8 @@ const Cart = () => {
               toast.error("Payment verification failed");
               setBusy(false);
             }
-          } catch (err) {
-            toast.error("Payment verification failed");
+          } catch (err: any) {
+            toast.error(err.message || "Payment verification failed");
             setBusy(false);
           }
         },

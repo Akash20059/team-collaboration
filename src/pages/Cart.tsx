@@ -96,7 +96,7 @@ const Cart = () => {
       const orderData = await api.createPaymentOrder({ amount: total });
 
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_TFKXsL3y6jPboO",
         amount: orderData.amount,
         currency: orderData.currency,
         name: "Shreemata Goumandira",
